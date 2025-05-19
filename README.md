@@ -1,82 +1,98 @@
-# 會議錄音轉錄系統
+# AI Meeting Transcriber
 
-這是一個使用 OpenAI Whisper API 進行會議錄音轉錄和分析的系統，結合了 pyannote.audio 進行說話者辨識。
+A system that uses OpenAI Whisper API for meeting audio transcription and analysis, combined with pyannote.audio for speaker diarization.
 
-## 主要功能
+## Main Features
 
-- 🎙️ **語音轉文字**：使用 OpenAI Whisper API 進行高品質的語音轉錄
-- 👥 **說話者辨識**：使用 pyannote.audio 進行說話者分離和標識
-- 📝 **會議摘要**：自動生成會議的摘要
-- ✅ **發言者待辦事項**：根據每位參與者的發言內容提取待辦事項
+- 🎙️ **Speech-to-Text**: High-quality audio transcription using OpenAI Whisper API
+- 👥 **Speaker Diarization**: Speaker separation and identification using pyannote.audio
+- 📝 **Meeting Summary**: Automatic generation of meeting summaries
+- ✅ **Speaker Action Items**: Extraction of action items based on each participant's speech content
 
-## 系統需求
+## System Requirements
 
-### 支援的音訊格式
+### Supported Audio Formats
 - WAV
 - MP3
 - M4A
 - AAC
 - FLAC
 
-### 限制條件
-- 音訊檔案大小限制：100MB
-- 大於 25MB 的檔案會自動分段處理
-- 需要有效的 OpenAI API 密鑰
-- 需要有效的 Hugging Face 令牌
+### Limitations
+- Audio file size limit: 100MB
+- Files larger than 25MB will be automatically segmented
+- Valid OpenAI API key required
+- Valid Hugging Face token required
 
-## 快速開始
+## Quick Start
 
-### 1. 安裝依賴
+### 1. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 環境設定
-創建 `.env` 文件並設定以下環境變數：
+### 2. Environment Setup
+Create a `.env` file with the following environment variables:
 
 ```env
-# OpenAI API設定
+# OpenAI API Settings
 OPENAI_API_KEY=your_openai_api_key_here
 
 # Hugging Face Token
 HF_TOKEN=your_huggingface_token_here
 
-# Azure OpenAI設定（選用）
+# Azure OpenAI Settings (Optional)
 AZURE_OPENAI_API_KEY=your_azure_openai_api_key_here
 AZURE_OPENAI_ENDPOINT=your_azure_openai_endpoint_here
 AZURE_OPENAI_DEPLOYMENT=your_azure_openai_deployment_name_here
 AZURE_OPENAI_API_VERSION=your_azure_openai_api_version_here
 ```
 
-### 3. 啟動應用
+### 3. Launch Application
 ```bash
 python app.py
 ```
-應用將在 http://localhost:8080 啟動
+The application will start at http://localhost:8080
 
-## 必要設定
+## Required Setup
 
-1. **OpenAI API 密鑰**
-   - 前往 [OpenAI Platform](https://platform.openai.com/) 申請
-   - 注意：可能需要付費使用
+1. **OpenAI API Key**
+   - Apply at [OpenAI Platform](https://platform.openai.com/)
+   - Note: May require paid usage
 
-2. **Hugging Face 令牌**
-   - 前往 [Hugging Face Settings](https://huggingface.co/settings/tokens) 申請
-   - 需要接受 pyannote/speaker-diarization-3.0 模型的使用條款
+2. **Hugging Face Token**
+   - Apply at [Hugging Face Settings](https://huggingface.co/settings/tokens)
+   - Must accept the terms of use for pyannote/speaker-diarization-3.0 model
 
-## 更新日誌
+## Changelog
 
 ### 2023-05-20
-- 整合 pyannote.audio 進行說話者辨識
-- 優化 Whisper API 轉錄結果與說話者辨識的整合
+- Integrated pyannote.audio for speaker diarization
+- Optimized integration of Whisper API transcription with speaker diarization
 
 ### 2023-05-19
-- 升級至 OpenAI Whisper API
-- 新增大型音訊檔案分段處理功能
-- 實作自動檔案分割處理機制（>25MB）
+- Upgraded to OpenAI Whisper API
+- Added large audio file segmentation feature
+- Implemented automatic file segmentation for files >25MB
 
-## 注意事項
+## Notes
 
-- 系統會根據語音段落的重疊情況自動分配最合適的說話者
-- 建議使用高品質的錄音設備以獲得最佳辨識效果
-- 請確保有足夠的 API 配額以處理大型會議錄音 
+- The system automatically assigns the most appropriate speaker based on speech segment overlap
+- High-quality recording equipment is recommended for optimal recognition results
+- Ensure sufficient API quota for processing large meeting recordings
+
+## License
+
+Copyright 2025 AI Meeting Transcriber
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. 

@@ -1,6 +1,6 @@
 __pycache__/
 *.pyc
 .env
-uploads/
-processed/
-output/
+static/output
+static/processed
+static/uploads

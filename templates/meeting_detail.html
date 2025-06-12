@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}{{ meeting.original_filename }} - 會議詳情{% endblock %}
+{% block page_title %}{{ meeting.original_filename }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('meetings_list') }}" class="btn btn-default btn-sm">
+    <i class="fa fa-arrow-left"></i> 返回列表
+</a>
+{% if meeting.status == 'completed' %}
+<div class="btn-group">
+    <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-toggle="dropdown">
+        <i class="fa fa-download"></i> 下載檔案 <span class="caret"></span>
+    </button>
+    <ul class="dropdown-menu">
+        <li><a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='srt') }}"><i class="fa fa-file-text-o"></i> 字幕檔 (SRT)</a></li>
+        <li><a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='speaker_srt') }}"><i class="fa fa-users"></i> 語者標註字幕</a></li>
+        <li><a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='rttm') }}"><i class="fa fa-clock-o"></i> 語者時間檔 (RTTM)</a></li>
+    </ul>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 會議基本資訊 -->
+    <div class="col-md-8">
+        <div class="x_panel">
+            <div class="x_title">
+                <h2><i class="fa fa-info-circle"></i> 會議資訊</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <table class="table table-bordered">
+                    <tr>
+                        <td class="col-md-3"><strong>檔案名稱</strong></td>
+                        <td>{{ meeting.original_filename }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>處理狀態</strong></td>
+                        <td>
+                            <span class="status-badge status-{{ meeting.status }}" id="currentStatus">
+                                {% if meeting.status == 'uploaded' %}已上傳
+                                {% elif meeting.status == 'processing' %}處理中
+                                {% elif meeting.status == 'completed' %}已完成
+                                {% elif meeting.status == 'failed' %}失敗
+                                {% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>上傳時間</strong></td>
+                        <td>{{ meeting.created_at if meeting.created_at else '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>處理完成時間</strong></td>
+                        <td>{{ meeting.processed_at if meeting.processed_at else '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>音訊時長</strong></td>
+                        <td>
+                            {% if meeting.duration %}
+                                {{ "%.1f"|format(meeting.duration/60) }} 分鐘 ({{ "%.0f"|format(meeting.duration) }} 秒)
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>識別的語者數量</strong></td>
+                        <td>{{ meeting.num_speakers if meeting.num_speakers else '-' }}</td>
+                    </tr>
+                    {% if meeting.error_message %}
+                    <tr>
+                        <td><strong>錯誤訊息</strong></td>
+                        <td class="text-danger">{{ meeting.error_message }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+
+        <!-- 處理進度 -->
+        {% if meeting.status == 'processing' %}
+        <div class="x_panel">
+            <div class="x_title">
+                <h2><i class="fa fa-spinner fa-spin"></i> 處理進度</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div class="progress progress-striped active">
+                    <div class="progress-bar progress-bar-info" style="width: 50%"></div>
+                </div>
+                <p class="text-center">正在處理您的會議音訊，請稍候...</p>
+                <div class="processing-steps">
+                    <div class="step completed">
+                        <i class="fa fa-check-circle"></i> 檔案上傳完成
+                    </div>
+                    <div class="step active">
+                        <i class="fa fa-spinner fa-spin"></i> 音訊處理中
+                    </div>
+                    <div class="step">
+                        <i class="fa fa-circle-o"></i> 語音轉文字
+                    </div>
+                    <div class="step">
+                        <i class="fa fa-circle-o"></i> 語者辨識
+                    </div>
+                    <div class="step">
+                        <i class="fa fa-circle-o"></i> 結果合併
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 字幕預覽 -->
+        {% if meeting.status == 'completed' and meeting.speaker_srt_path %}
+        <div class="x_panel">
+            <div class="x_title">
+                <h2><i class="fa fa-file-text-o"></i> 字幕預覽</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div class="subtitle-preview" id="subtitlePreview">
+                    <p class="text-center text-muted">載入字幕中...</p>
+                </div>
+                
+                <div class="subtitle-controls">
+                    <button class="btn btn-info btn-sm" onclick="toggleSubtitleMode()">
+                        <i class="fa fa-eye"></i> <span id="modeToggleText">切換到純文字模式</span>
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="copySubtitleText()">
+                        <i class="fa fa-copy"></i> 複製文字
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 側邊欄 -->
+    <div class="col-md-4">
+        <!-- 快速操作 -->
+        <div class="x_panel">
+            <div class="x_title">
+                <h2><i class="fa fa-bolt"></i> 快速操作</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                {% if meeting.status == 'completed' %}
+                <div class="list-group">
+                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='speaker_srt') }}" 
+                       class="list-group-item">
+                        <i class="fa fa-users"></i> 下載語者標註字幕
+                        <small class="text-muted">包含發言者資訊的完整字幕</small>
+                    </a>
+                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='srt') }}" 
+                       class="list-group-item">
+                        <i class="fa fa-file-text-o"></i> 下載純字幕檔
+                        <small class="text-muted">不含語者標註的字幕檔</small>
+                    </a>
+                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='rttm') }}" 
+                       class="list-group-item">
+                        <i class="fa fa-clock-o"></i> 下載語者時間檔
+                        <small class="text-muted">RTTM 格式的語者辨識結果</small>
+                    </a>
+                </div>
+                {% elif meeting.status == 'failed' %}
+                <div class="alert alert-danger">
+                    <h4><i class="fa fa-exclamation-triangle"></i> 處理失敗</h4>
+                    <p>{{ meeting.error_message if meeting.error_message else '處理過程中發生未知錯誤' }}</p>
+                    <button class="btn btn-warning btn-sm" onclick="retryProcessing()">
+                        <i class="fa fa-refresh"></i> 重新處理
+                    </button>
+                </div>
+                {% elif meeting.status == 'processing' %}
+                <div class="alert alert-info">
+                    <h4><i class="fa fa-spinner fa-spin"></i> 處理中</h4>
+                    <p>您的會議音訊正在處理中，處理時間取決於音訊長度。</p>
+                    <p><small>預估剩餘時間：計算中...</small></p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 語者統計 -->
+        {% if meeting.status == 'completed' and meeting.num_speakers %}
+        <div class="x_panel">
+            <div class="x_title">
+                <h2><i class="fa fa-users"></i> 語者統計</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div id="speakerStats">
+                    <p class="text-center text-muted">載入統計中...</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 相關操作 -->
+        <div class="x_panel">
+            <div class="x_title">
+                <h2><i class="fa fa-cogs"></i> 相關操作</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div class="btn-group-vertical" style="width: 100%;">
+                    <button class="btn btn-default btn-sm" onclick="shareResults()">
+                        <i class="fa fa-share"></i> 分享結果
+                    </button>
+                    <button class="btn btn-warning btn-sm" onclick="editSpeakerLabels()">
+                        <i class="fa fa-edit"></i> 編輯語者標籤
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteRecord()">
+                        <i class="fa fa-trash"></i> 刪除記錄
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.processing-steps {
+    margin-top: 20px;
+}
+
+.processing-steps .step {
+    padding: 10px 0;
+    border-left: 3px solid #ddd;
+    padding-left: 20px;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.processing-steps .step.completed {
+    border-left-color: #27ae60;
+    color: #27ae60;
+}
+
+.processing-steps .step.active {
+    border-left-color: #3498db;
+    color: #3498db;
+    font-weight: bold;
+}
+
+.processing-steps .step i {
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: #fff;
+    border-radius: 50%;
+    padding: 3px;
+    font-size: 16px;
+}
+
+.subtitle-preview {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 15px;
+    background-color: #fdfdfd;
+    white-space: pre-wrap;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+.subtitle-controls {
+    text-align: right;
+    margin-top: 10px;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.body.dataset.meetingId = "{{ meeting.id }}";
+document.body.dataset.meetingStatus = "{{ meeting.status }}";
+</script>
+<script src="{{ url_for('static', filename='js/meeting_detail.js') }}"></script>
+{% endblock %}

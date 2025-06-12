@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}會議記錄 - 會議助手{% endblock %}
+{% block page_title %}會議記錄{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('index') }}" class="btn btn-primary btn-sm">
+    <i class="fa fa-upload"></i> 上傳新檔案
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="x_panel">
+            <div class="x_title">
+                <h2><i class="fa fa-list"></i> 所有會議記錄</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                
+                <!-- 統計資訊 -->
+                <div class="row tile_count">
+                    <div class="col-md-3 col-sm-6 tile_stats_count">
+                        <span class="count_top"><i class="fa fa-file-audio-o"></i> 總會議數</span>
+                        <div class="count">{{ meetings|length }}</div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 tile_stats_count">
+                        <span class="count_top"><i class="fa fa-check-circle"></i> 已完成</span>
+                        <div class="count">{{ meetings|selectattr("status", "equalto", "completed")|list|length }}</div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 tile_stats_count">
+                        <span class="count_top"><i class="fa fa-spinner"></i> 處理中</span>
+                        <div class="count">{{ meetings|selectattr("status", "equalto", "processing")|list|length }}</div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 tile_stats_count">
+                        <span class="count_top"><i class="fa fa-exclamation-triangle"></i> 失敗</span>
+                        <div class="count">{{ meetings|selectattr("status", "equalto", "failed")|list|length }}</div>
+                    </div>
+                </div>
+
+                <!-- 搜尋和篩選 -->
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="form-group">
+                            <input type="text" id="searchInput" class="form-control" placeholder="搜尋檔案名稱...">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <select id="statusFilter" class="form-control">
+                                <option value="">所有狀態</option>
+                                <option value="uploaded">已上傳</option>
+                                <option value="processing">處理中</option>
+                                <option value="completed">已完成</option>
+                                <option value="failed">失敗</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 會議列表 -->
+                {% if meetings %}
+                <div class="table-responsive">
+                    <table class="table table-striped" id="meetingsTable">
+                        <thead>
+                            <tr>
+                                <th>檔案名稱</th>
+                                <th>狀態</th>
+                                <th>上傳時間</th>
+                                <th>時長</th>
+                                <th>語者數</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for meeting in meetings %}
+                            <tr data-status="{{ meeting.status }}">
+                                <td>
+                                    <i class="fa fa-file-audio-o"></i>
+                                    <strong>{{ meeting.original_filename }}</strong>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-{{ meeting.status }}">
+                                        {% if meeting.status == 'uploaded' %}已上傳
+                                        {% elif meeting.status == 'processing' %}處理中
+                                        {% elif meeting.status == 'completed' %}已完成
+                                        {% elif meeting.status == 'failed' %}失敗
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    {{ moment(meeting.created_at).format('YYYY-MM-DD HH:mm') if meeting.created_at else '-' }}
+                                </td>
+                                <td>
+                                    {% if meeting.duration %}
+                                        {{ "%.1f"|format(meeting.duration/60) }} 分鐘
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ meeting.num_speakers if meeting.num_speakers else '-' }}
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{{ url_for('meeting_detail', meeting_id=meeting.id) }}" 
+                                           class="btn btn-info btn-xs" 
+                                           data-toggle="tooltip" 
+                                           title="查看詳情">
+                                            <i class="fa fa-eye"></i>
+                                        </a>
+                                        
+                                        {% if meeting.status == 'completed' %}
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-success btn-xs dropdown-toggle" 
+                                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                <i class="fa fa-download"></i> <span class="caret"></span>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li>
+                                                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='srt') }}">
+                                                        <i class="fa fa-file-text-o"></i> 字幕檔 (SRT)
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='speaker_srt') }}">
+                                                        <i class="fa fa-users"></i> 語者標註字幕
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='rttm') }}">
+                                                        <i class="fa fa-clock-o"></i> 語者時間檔 (RTTM)
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        {% elif meeting.status == 'processing' %}
+                                        <button class="btn btn-warning btn-xs" disabled>
+                                            <i class="fa fa-spinner fa-spin"></i>
+                                        </button>
+                                        {% elif meeting.status == 'failed' %}
+                                        <button class="btn btn-danger btn-xs" 
+                                                data-toggle="tooltip" 
+                                                title="處理失敗，點擊查看詳情"
+                                                onclick="location.href='{{ url_for('meeting_detail', meeting_id=meeting.id) }}'">
+                                            <i class="fa fa-exclamation-triangle"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center" style="padding: 40px;">
+                    <i class="fa fa-inbox fa-3x text-muted"></i>
+                    <h3 class="text-muted">還沒有會議記錄</h3>
+                    <p class="text-muted">上傳您的第一個會議音訊檔案開始使用</p>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                        <i class="fa fa-upload"></i> 立即上傳
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 批次操作模態框 -->
+<div class="modal fade" id="batchModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">批次操作</h4>
+            </div>
+            <div class="modal-body">
+                <p>選擇要執行的批次操作：</p>
+                <div class="btn-group-vertical" style="width: 100%;">
+                    <button class="btn btn-info" onclick="batchDownload()">
+                        <i class="fa fa-download"></i> 批次下載已完成的檔案
+                    </button>
+                    <button class="btn btn-warning" onclick="batchReprocess()">
+                        <i class="fa fa-refresh"></i> 重新處理失敗的檔案
+                    </button>
+                    <button class="btn btn-danger" onclick="batchDelete()">
+                        <i class="fa fa-trash"></i> 刪除選中的記錄
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // 使用 .fromNow() 進行相對時間顯示
+    $('.time-display').each(function() {
+        const timeStr = $(this).data('time');
+        if (timeStr && typeof moment !== 'undefined') {
+            $(this).text(moment(timeStr).fromNow());
+            $(this).attr('title', moment(timeStr).format('YYYY-MM-DD HH:mm:ss'));
+        }
+    });
+});
+</script>
+{% endblock %}

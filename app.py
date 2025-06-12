@@ -349,6 +349,339 @@ def download_file(meeting_id, file_type):
     
     return send_file(file_path, as_attachment=True, download_name=download_name)
 
+@app.route('/api/meeting/<meeting_id>/subtitle')
+def get_meeting_subtitle(meeting_id):
+    """
+    獲取會議字幕內容用於網頁顯示
+    
+    這個端點的設計目的是為前端提供字幕內容，讓用戶可以在瀏覽器中
+    直接閱讀、搜尋和互動，而不是下載檔案到本地。
+    """
+    try:
+        # 建立資料庫連接並查詢會議記錄
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # 查詢會議的字幕檔案路徑和處理狀態
+        cursor.execute('''
+            SELECT speaker_srt_path, status, original_filename 
+            FROM meetings 
+            WHERE id = ?
+        ''', (meeting_id,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        # 檢查會議記錄是否存在
+        if not result:
+            logger.warning(f"會議記錄不存在: {meeting_id}")
+            return jsonify({
+                'error': '會議記錄不存在',
+                'code': 'MEETING_NOT_FOUND'
+            }), 404
+        
+        speaker_srt_path, status, original_filename = result
+        
+        # 檢查會議是否已處理完成
+        if status != 'completed':
+            logger.info(f"會議 {meeting_id} 尚未處理完成，當前狀態: {status}")
+            return jsonify({
+                'error': '會議尚未處理完成',
+                'code': 'PROCESSING_NOT_COMPLETE',
+                'current_status': status
+            }), 400
+        
+        # 檢查字幕檔案路徑是否存在
+        if not speaker_srt_path:
+            logger.error(f"會議 {meeting_id} 的字幕檔案路徑為空")
+            return jsonify({
+                'error': '字幕檔案路徑不存在',
+                'code': 'SUBTITLE_PATH_MISSING'
+            }), 404
+        
+        # 構建完整的檔案路徑
+        subtitle_file = BASE_DIR / speaker_srt_path
+        
+        # 檢查檔案是否實際存在於檔案系統中
+        if not subtitle_file.exists():
+            logger.error(f"字幕檔案不存在於檔案系統: {subtitle_file}")
+            return jsonify({
+                'error': '字幕檔案遺失',
+                'code': 'SUBTITLE_FILE_MISSING',
+                'file_path': str(subtitle_file)
+            }), 404
+        
+        # 讀取字幕檔案內容
+        try:
+            with open(subtitle_file, 'r', encoding='utf-8') as f:
+                subtitle_content = f.read()
+            
+            # 記錄成功的字幕載入
+            logger.info(f"成功載入會議 {meeting_id} 的字幕內容，檔案大小: {len(subtitle_content)} 字元")
+            
+            # 返回字幕內容，設定正確的 Content-Type
+            # 這裡我們返回純文字，讓前端可以直接處理和顯示
+            return subtitle_content, 200, {
+                'Content-Type': 'text/plain; charset=utf-8',
+                'X-Meeting-ID': meeting_id,
+                'X-Original-Filename': original_filename
+            }
+            
+        except UnicodeDecodeError as e:
+            # 處理編碼錯誤，可能是檔案編碼不是 UTF-8
+            logger.error(f"字幕檔案編碼錯誤: {e}")
+            try:
+                # 嘗試使用其他編碼讀取
+                with open(subtitle_file, 'r', encoding='utf-8-sig') as f:
+                    subtitle_content = f.read()
+                return subtitle_content, 200, {
+                    'Content-Type': 'text/plain; charset=utf-8'
+                }
+            except Exception as e2:
+                logger.error(f"使用備用編碼讀取檔案也失敗: {e2}")
+                return jsonify({
+                    'error': '字幕檔案編碼錯誤',
+                    'code': 'ENCODING_ERROR'
+                }), 500
+        
+        except IOError as e:
+            # 處理檔案讀取錯誤（權限問題、磁碟錯誤等）
+            logger.error(f"讀取字幕檔案 IO 錯誤: {e}")
+            return jsonify({
+                'error': '讀取字幕檔案失敗',
+                'code': 'FILE_READ_ERROR'
+            }), 500
+    
+    except sqlite3.Error as e:
+        # 處理資料庫錯誤
+        logger.error(f"資料庫查詢錯誤: {e}")
+        return jsonify({
+            'error': '資料庫查詢失敗',
+            'code': 'DATABASE_ERROR'
+        }), 500
+    
+    except Exception as e:
+        # 處理其他未預期的錯誤
+        logger.error(f"獲取字幕內容時發生未知錯誤: {e}")
+        return jsonify({
+            'error': '伺服器內部錯誤',
+            'code': 'INTERNAL_ERROR'
+        }), 500
+
+
+@app.route('/api/meeting/<meeting_id>/subtitle/formatted')
+def get_meeting_subtitle_formatted(meeting_id):
+    """
+    獲取格式化的會議字幕內容
+    
+    這個端點提供更結構化的字幕資料，包含時間戳記、語者資訊等，
+    方便前端進行更豐富的顯示和互動功能。
+    """
+    try:
+        # 首先獲取原始字幕內容
+        subtitle_response = get_meeting_subtitle(meeting_id)
+        
+        # 如果原始字幕獲取失敗，直接返回錯誤
+        if isinstance(subtitle_response, tuple) and subtitle_response[1] != 200:
+            return subtitle_response
+        
+        # 提取字幕內容（如果是成功的響應）
+        if isinstance(subtitle_response, tuple):
+            subtitle_content = subtitle_response[0]
+        else:
+            subtitle_content = subtitle_response
+        
+        # 解析 SRT 格式的字幕
+        subtitle_segments = parse_srt_content(subtitle_content)
+        
+        # 返回結構化的 JSON 資料
+        return jsonify({
+            'meeting_id': meeting_id,
+            'total_segments': len(subtitle_segments),
+            'segments': subtitle_segments
+        })
+    
+    except Exception as e:
+        logger.error(f"獲取格式化字幕時發生錯誤: {e}")
+        return jsonify({
+            'error': '獲取格式化字幕失敗',
+            'code': 'FORMATTING_ERROR'
+        }), 500
+
+
+def parse_srt_content(srt_content):
+    """
+    解析 SRT 格式的字幕內容，轉換為結構化資料
+    
+    這個函數將原始的 SRT 文字內容解析成包含時間戳記、語者資訊
+    和文字內容的結構化資料，方便前端進行各種處理和顯示。
+    """
+    try:
+        # 使用 srt 函式庫解析內容
+        subtitles = list(srt.parse(srt_content))
+        
+        segments = []
+        for subtitle in subtitles:
+            # 提取語者資訊（如果存在）
+            speaker = extract_speaker_from_content(subtitle.content)
+            
+            # 清理內容文字（移除語者標籤）
+            clean_content = clean_subtitle_content(subtitle.content)
+            
+            segment = {
+                'index': subtitle.index,
+                'start_time': subtitle.start.total_seconds(),
+                'end_time': subtitle.end.total_seconds(),
+                'start_time_formatted': format_time(subtitle.start.total_seconds()),
+                'end_time_formatted': format_time(subtitle.end.total_seconds()),
+                'duration': (subtitle.end - subtitle.start).total_seconds(),
+                'speaker': speaker,
+                'content': clean_content,
+                'original_content': subtitle.content
+            }
+            segments.append(segment)
+        
+        return segments
+    
+    except Exception as e:
+        logger.error(f"解析 SRT 內容時發生錯誤: {e}")
+        return []
+
+
+def extract_speaker_from_content(content):
+    """
+    從字幕內容中提取語者資訊
+    
+    這個修正版本能夠正確處理你實際的語者標籤格式，
+    包括數字編號的語者標籤（如 [發言者00]、[發言者01] 等）
+    """
+    import re
+    
+    # 擴展的語者標籤匹配模式，涵蓋更多實際使用的格式
+    speaker_patterns = [
+        # 數字格式的語者標籤（你的實際格式）
+        r'\[發言者(\d+)\]',       # [發言者00], [發言者01], [發言者02] 等
+        r'\[語者(\d+)\]',         # [語者00], [語者01] 等
+        r'\[Speaker(\d+)\]',      # [Speaker00], [Speaker01] 等
+        r'\[SPEAKER_(\d+)\]',     # [SPEAKER_00], [SPEAKER_01] 等（原始 pyannote 格式）
+        
+        # 字母格式的語者標籤（備用支援）
+        r'\[發言者([A-Z])\]',     # [發言者A], [發言者B] 等
+        r'\[Speaker ([A-Z])\]',   # [Speaker A], [Speaker B] 等
+        r'\[語者([A-Z])\]',       # [語者A], [語者B] 等
+        r'\[([A-Z])\]',           # [A], [B] 等
+        
+        # 冒號格式的語者標籤
+        r'發言者(\d+):',          # 發言者00:, 發言者01: 等
+        r'語者(\d+):',            # 語者00:, 語者01: 等
+        r'Speaker(\d+):',         # Speaker00:, Speaker01: 等
+        r'發言者([A-Z]):',        # 發言者A:, 發言者B: 等
+        r'Speaker ([A-Z]):',      # Speaker A:, Speaker B: 等
+        
+        # 空格格式的語者標籤（新增）
+        r'\[發言者(\d+)\] ',      # [發言者00] , [發言者01]  等
+        r'\[語者(\d+)\] ',        # [語者00] , [語者01]  等
+        r'\[Speaker(\d+)\] ',     # [Speaker00] , [Speaker01]  等
+        r'\[SPEAKER_\d+\]\s*',    # [SPEAKER_00] , [SPEAKER_01]  等
+        r'\[發言者([A-Z])\] ',    # [發言者A] , [發言者B]  等
+        r'\[Speaker ([A-Z])\] ',  # [Speaker A] , [Speaker B]  等
+        r'\[語者([A-Z])\] ',      # [語者A] , [語者B]  等
+        r'\[([A-Z])\] ',          # [A] , [B]  等
+    ]
+    
+    for pattern in speaker_patterns:
+        match = re.search(pattern, content)
+        if match:
+            speaker_id = match.group(1)
+            
+            # 處理數字格式的語者ID
+            if speaker_id.isdigit():
+                # 將數字轉換為更友善的顯示格式
+                speaker_number = int(speaker_id)
+                # 你可以選擇保持數字格式或轉換為字母格式
+                return f"發言者{speaker_number:02d}"  # 保持數字格式：發言者00, 發言者01
+                # 或者使用下面這行轉換為字母格式：
+                # return f"發言者{chr(65 + speaker_number)}"  # 轉換為：發言者A, 發言者B
+            else:
+                # 處理字母格式的語者ID
+                return f"發言者{speaker_id}"
+    
+    # 如果沒有匹配到任何模式，嘗試更寬鬆的匹配
+    # 這是為了處理一些邊緣情況或格式變異
+    fallback_patterns = [
+        r'(\d+):', # 純數字後跟冒號，如 "00:", "01:"
+        r'([A-Z]):', # 純字母後跟冒號，如 "A:", "B:"
+    ]
+    
+    for pattern in fallback_patterns:
+        match = re.search(pattern, content)
+        if match:
+            speaker_id = match.group(1)
+            if speaker_id.isdigit():
+                return f"發言者{int(speaker_id):02d}"
+            else:
+                return f"發言者{speaker_id}"
+    
+    # 如果完全無法識別，返回基於內容位置的預設值
+    # 這比直接返回"未知"更有用
+    return "發言者未識別"
+
+
+def clean_subtitle_content(content):
+    """
+    清理字幕內容，移除語者標籤和時間戳記
+    
+    這個函數專注於移除實際使用的語者標籤格式，
+    確保清理後的內容只包含純粹的對話文字。
+    """
+    import re
+    
+    # 需要移除的語者標籤模式（根據實際 SRT 檔案格式優化）
+    patterns_to_remove = [
+        # 最常見的格式，帶冒號的語者標籤
+        r'\[發言者\d+\]:\s*',      # [發言者00]: , [發言者01]:  等
+        r'\[語者\d+\]:\s*',        # [語者00]: , [語者01]:  等
+        r'\[Speaker\d+\]:\s*',     # [Speaker00]: , [Speaker01]:  等
+        r'\[SPEAKER_\d+\]:\s*',    # [SPEAKER_00]: , [SPEAKER_01]:  等
+        
+        # 不帶冒號的語者標籤格式（新格式）
+        r'\[發言者\d+\]\s+',       # [發言者00] , [發言者01]  等
+        r'\[語者\d+\]\s+',         # [語者00] , [語者01]  等
+        r'\[Speaker\d+\]\s+',      # [Speaker00] , [Speaker01]  等
+        r'\[SPEAKER_\d+\]\s+',     # [SPEAKER_00] , [SPEAKER_01]  等
+        
+        # 可能的時間戳記格式
+        r'\(\d{2}:\d{2}:\d{2}\s*-\s*\d{2}:\d{2}:\d{2}\)\s*',  # (00:01:23 - 00:02:45)
+        r'\[\d{2}:\d{2}:\d{2}\]\s*',  # [00:01:23]
+    ]
+    
+    cleaned = content
+    for pattern in patterns_to_remove:
+        cleaned = re.sub(pattern, '', cleaned)
+    
+    # 移除多餘的空白和換行
+    cleaned = re.sub(r'\n+', '\n', cleaned)  # 合併多個換行
+    cleaned = re.sub(r'\s+', ' ', cleaned)   # 合併多個空格
+    
+    return cleaned.strip()
+
+
+def format_time(seconds):
+    """
+    將秒數格式化為可讀的時間格式 (HH:MM:SS)
+    
+    這個輔助函數將浮點數秒數轉換為標準的時間顯示格式，
+    方便在前端顯示準確的時間戳記。
+    """
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    
+    if hours > 0:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    else:
+        return f"{minutes:02d}:{secs:02d}"
+
 if __name__ == '__main__':
     # 初始化資料庫
     init_db()

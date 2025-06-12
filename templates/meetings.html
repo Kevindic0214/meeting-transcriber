@@ -10,188 +10,347 @@
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-12">
-        <div class="x_panel">
-            <div class="x_title">
-                <h2><i class="fa fa-list"></i> 所有會議記錄</h2>
-                <div class="clearfix"></div>
-            </div>
+<!-- 統計資訊卡片 -->
+<div class="row tile_count">
+    <div class="col-md-3 col-sm-6 col-xs-12">
+        <div class="x_panel fade-in" style="border-left: 4px solid var(--info-color);">
             <div class="x_content">
-                
-                <!-- 統計資訊 -->
-                <div class="row tile_count">
-                    <div class="col-md-3 col-sm-6 tile_stats_count">
-                        <span class="count_top"><i class="fa fa-file-audio-o"></i> 總會議數</span>
-                        <div class="count">{{ meetings|length }}</div>
-                    </div>
-                    <div class="col-md-3 col-sm-6 tile_stats_count">
-                        <span class="count_top"><i class="fa fa-check-circle"></i> 已完成</span>
-                        <div class="count">{{ meetings|selectattr("status", "equalto", "completed")|list|length }}</div>
-                    </div>
-                    <div class="col-md-3 col-sm-6 tile_stats_count">
-                        <span class="count_top"><i class="fa fa-spinner"></i> 處理中</span>
-                        <div class="count">{{ meetings|selectattr("status", "equalto", "processing")|list|length }}</div>
-                    </div>
-                    <div class="col-md-3 col-sm-6 tile_stats_count">
-                        <span class="count_top"><i class="fa fa-exclamation-triangle"></i> 失敗</span>
-                        <div class="count">{{ meetings|selectattr("status", "equalto", "failed")|list|length }}</div>
-                    </div>
-                </div>
-
-                <!-- 搜尋和篩選 -->
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="form-group">
-                            <input type="text" id="searchInput" class="form-control" placeholder="搜尋檔案名稱...">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <span style="color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fa fa-file-audio"></i> 總會議數
+                        </span>
+                        <div style="font-size: 2.5rem; font-weight: 800; color: var(--text-primary); margin: 0.5rem 0;">
+                            {{ meetings|length }}
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <select id="statusFilter" class="form-control">
-                                <option value="">所有狀態</option>
-                                <option value="uploaded">已上傳</option>
-                                <option value="processing">處理中</option>
-                                <option value="completed">已完成</option>
-                                <option value="failed">失敗</option>
-                            </select>
-                        </div>
+                    <div style="width: 4rem; height: 4rem; background: linear-gradient(135deg, var(--info-color), #1E40AF); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
+                        <i class="fa fa-file-audio"></i>
                     </div>
                 </div>
-
-                <!-- 會議列表 -->
-                {% if meetings %}
-                <div class="table-responsive">
-                    <table class="table table-striped" id="meetingsTable">
-                        <thead>
-                            <tr>
-                                <th>檔案名稱</th>
-                                <th>狀態</th>
-                                <th>上傳時間</th>
-                                <th>時長</th>
-                                <th>語者數</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for meeting in meetings %}
-                            <tr data-status="{{ meeting.status }}">
-                                <td>
-                                    <i class="fa fa-file-audio-o"></i>
-                                    <strong>{{ meeting.original_filename }}</strong>
-                                </td>
-                                <td>
-                                    <span class="status-badge status-{{ meeting.status }}">
-                                        {% if meeting.status == 'uploaded' %}已上傳
-                                        {% elif meeting.status == 'processing' %}處理中
-                                        {% elif meeting.status == 'completed' %}已完成
-                                        {% elif meeting.status == 'failed' %}失敗
-                                        {% endif %}
-                                    </span>
-                                </td>
-                                <td>
-                                    {{ moment(meeting.created_at).format('YYYY-MM-DD HH:mm') if meeting.created_at else '-' }}
-                                </td>
-                                <td>
-                                    {% if meeting.duration %}
-                                        {{ "%.1f"|format(meeting.duration/60) }} 分鐘
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {{ meeting.num_speakers if meeting.num_speakers else '-' }}
-                                </td>
-                                <td>
-                                    <div class="btn-group">
-                                        <a href="{{ url_for('meeting_detail', meeting_id=meeting.id) }}" 
-                                           class="btn btn-info btn-xs" 
-                                           data-toggle="tooltip" 
-                                           title="查看詳情">
-                                            <i class="fa fa-eye"></i>
-                                        </a>
-                                        
-                                        {% if meeting.status == 'completed' %}
-                                        <div class="btn-group">
-                                            <button type="button" class="btn btn-success btn-xs dropdown-toggle" 
-                                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                                <i class="fa fa-download"></i> <span class="caret"></span>
-                                            </button>
-                                            <ul class="dropdown-menu">
-                                                <li>
-                                                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='srt') }}">
-                                                        <i class="fa fa-file-text-o"></i> 字幕檔 (SRT)
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='speaker_srt') }}">
-                                                        <i class="fa fa-users"></i> 語者標註字幕
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='rttm') }}">
-                                                        <i class="fa fa-clock-o"></i> 語者時間檔 (RTTM)
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                        {% elif meeting.status == 'processing' %}
-                                        <button class="btn btn-warning btn-xs" disabled>
-                                            <i class="fa fa-spinner fa-spin"></i>
-                                        </button>
-                                        {% elif meeting.status == 'failed' %}
-                                        <button class="btn btn-danger btn-xs" 
-                                                data-toggle="tooltip" 
-                                                title="處理失敗，點擊查看詳情"
-                                                onclick="location.href='{{ url_for('meeting_detail', meeting_id=meeting.id) }}'">
-                                            <i class="fa fa-exclamation-triangle"></i>
-                                        </button>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 col-xs-12">
+        <div class="x_panel fade-in" style="border-left: 4px solid var(--success-color);">
+            <div class="x_content">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <span style="color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fa fa-check-circle"></i> 已完成
+                        </span>
+                        <div style="font-size: 2.5rem; font-weight: 800; color: var(--text-primary); margin: 0.5rem 0;">
+                            {{ meetings|selectattr("status", "equalto", "completed")|list|length }}
+                        </div>
+                    </div>
+                    <div style="width: 4rem; height: 4rem; background: linear-gradient(135deg, var(--success-color), #047857); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
+                        <i class="fa fa-check-circle"></i>
+                    </div>
                 </div>
-                {% else %}
-                <div class="text-center" style="padding: 40px;">
-                    <i class="fa fa-inbox fa-3x text-muted"></i>
-                    <h3 class="text-muted">還沒有會議記錄</h3>
-                    <p class="text-muted">上傳您的第一個會議音訊檔案開始使用</p>
-                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
-                        <i class="fa fa-upload"></i> 立即上傳
-                    </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 col-xs-12">
+        <div class="x_panel fade-in" style="border-left: 4px solid var(--warning-color);">
+            <div class="x_content">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <span style="color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fa fa-spinner"></i> 處理中
+                        </span>
+                        <div style="font-size: 2.5rem; font-weight: 800; color: var(--text-primary); margin: 0.5rem 0;">
+                            {{ meetings|selectattr("status", "equalto", "processing")|list|length }}
+                        </div>
+                    </div>
+                    <div style="width: 4rem; height: 4rem; background: linear-gradient(135deg, var(--warning-color), #D97706); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
+                        <i class="fa fa-spinner"></i>
+                    </div>
                 </div>
-                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 col-xs-12">
+        <div class="x_panel fade-in" style="border-left: 4px solid var(--danger-color);">
+            <div class="x_content">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <span style="color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fa fa-exclamation-triangle"></i> 失敗
+                        </span>
+                        <div style="font-size: 2.5rem; font-weight: 800; color: var(--text-primary); margin: 0.5rem 0;">
+                            {{ meetings|selectattr("status", "equalto", "failed")|list|length }}
+                        </div>
+                    </div>
+                    <div style="width: 4rem; height: 4rem; background: linear-gradient(135deg, var(--danger-color), #DC2626); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
+                        <i class="fa fa-exclamation-triangle"></i>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- 批次操作模態框 -->
-<div class="modal fade" id="batchModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title">批次操作</h4>
-            </div>
-            <div class="modal-body">
-                <p>選擇要執行的批次操作：</p>
-                <div class="btn-group-vertical" style="width: 100%;">
-                    <button class="btn btn-info" onclick="batchDownload()">
-                        <i class="fa fa-download"></i> 批次下載已完成的檔案
-                    </button>
-                    <button class="btn btn-warning" onclick="batchReprocess()">
-                        <i class="fa fa-refresh"></i> 重新處理失敗的檔案
-                    </button>
-                    <button class="btn btn-danger" onclick="batchDelete()">
-                        <i class="fa fa-trash"></i> 刪除選中的記錄
-                    </button>
+<!-- 搜尋和篩選控制 -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="x_panel fade-in">
+            <div class="x_content">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 300px; position: relative;">
+                        <i class="fa fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-light); z-index: 1;"></i>
+                        <input type="text" id="searchInput" class="form-control" placeholder="搜尋檔案名稱..." 
+                               style="padding-left: 3rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    </div>
+                    
+                    <select id="statusFilter" class="form-control" style="width: auto; min-width: 150px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                        <option value="">所有狀態</option>
+                        <option value="uploaded">已上傳</option>
+                        <option value="processing">處理中</option>
+                        <option value="completed">已完成</option>
+                        <option value="failed">失敗</option>
+                    </select>
+                    
+                    <div style="display: flex; border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden;">
+                        <button class="btn view-toggle active" data-view="grid" style="border: none; border-radius: 0; background: var(--primary-color); color: white;">
+                            <i class="fa fa-th"></i>
+                        </button>
+                        <button class="btn view-toggle" data-view="list" style="border: none; border-radius: 0; background: var(--bg-secondary); color: var(--text-secondary);">
+                            <i class="fa fa-list"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- 會議列表 -->
+<div class="row">
+    <div class="col-md-12">
+        {% if meetings %}
+        <!-- 網格視圖 -->
+        <div id="gridView" class="meetings-container">
+            {% for meeting in meetings %}
+            <div class="col-lg-4 col-md-6 col-sm-12 meeting-item fade-in" data-status="{{ meeting.status }}" data-filename="{{ meeting.original_filename|lower }}">
+                <div class="meeting-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 0.5rem 0; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa fa-file-audio" style="color: var(--primary-color);"></i>
+                                {{ meeting.original_filename|truncate(30) }}
+                            </h4>
+                            <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+                                {{ meeting.original_filename }}
+                            </p>
+                        </div>
+                        <span class="status-badge status-{{ meeting.status }}">
+                            {% if meeting.status == 'uploaded' %}
+                                <i class="fa fa-clock"></i> 已上傳
+                            {% elif meeting.status == 'processing' %}
+                                <i class="fa fa-spinner fa-spin"></i> 處理中
+                            {% elif meeting.status == 'completed' %}
+                                <i class="fa fa-check-circle"></i> 已完成
+                            {% elif meeting.status == 'failed' %}
+                                <i class="fa fa-times-circle"></i> 失敗
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                            <i class="fa fa-calendar" style="color: var(--primary-color); width: 16px;"></i>
+                            <span>{{ moment(meeting.created_at).format('MM/DD HH:mm') if meeting.created_at else '-' }}</span>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                            <i class="fa fa-clock" style="color: var(--primary-color); width: 16px;"></i>
+                            <span>
+                                {% if meeting.duration %}
+                                    {{ "%.1f"|format(meeting.duration/60) }} 分鐘
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                            <i class="fa fa-users" style="color: var(--primary-color); width: 16px;"></i>
+                            <span>{{ meeting.num_speakers if meeting.num_speakers else '-' }} 位發言者</span>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                            <i class="fa fa-info-circle" style="color: var(--primary-color); width: 16px;"></i>
+                            <span>
+                                {% if meeting.status == 'processing' %}處理中
+                                {% elif meeting.status == 'completed' %}已完成
+                                {% elif meeting.status == 'failed' %}失敗
+                                {% else %}等待中{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <a href="{{ url_for('meeting_detail', meeting_id=meeting.id) }}" 
+                           class="btn btn-info btn-sm" 
+                           style="flex: 1; justify-content: center;">
+                            <i class="fa fa-eye"></i> 查看詳情
+                        </a>
+                        
+                        {% if meeting.status == 'completed' %}
+                        <div class="dropdown" style="flex: 1;">
+                            <button class="btn btn-success btn-sm dropdown-toggle" 
+                                    style="width: 100%; justify-content: center;"
+                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-download"></i> 下載
+                            </button>
+                            <ul class="dropdown-menu" style="min-width: 100%;">
+                                <li>
+                                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='srt') }}">
+                                        <i class="fa fa-file-text"></i> 字幕檔 (SRT)
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='speaker_srt') }}">
+                                        <i class="fa fa-users"></i> 語者標註字幕
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='rttm') }}">
+                                        <i class="fa fa-clock"></i> 語者時間檔 (RTTM)
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        {% elif meeting.status == 'processing' %}
+                        <button class="btn btn-warning btn-sm" disabled style="flex: 1; justify-content: center;">
+                            <i class="fa fa-spinner fa-spin"></i> 處理中
+                        </button>
+                        {% elif meeting.status == 'failed' %}
+                        <button class="btn btn-danger btn-sm" 
+                                style="flex: 1; justify-content: center;"
+                                onclick="retryProcessing('{{ meeting.id }}')">
+                            <i class="fa fa-refresh"></i> 重試
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- 列表視圖 -->
+        <div id="listView" style="display: none;">
+            <div class="x_panel fade-in">
+                <div class="x_content">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>檔案名稱</th>
+                                    <th>狀態</th>
+                                    <th>上傳時間</th>
+                                    <th>時長</th>
+                                    <th>語者數</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for meeting in meetings %}
+                                <tr class="meeting-row" data-status="{{ meeting.status }}" data-filename="{{ meeting.original_filename|lower }}">
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                            <i class="fa fa-file-audio" style="color: var(--primary-color); font-size: 1.1rem;"></i>
+                                            <div>
+                                                <strong style="color: var(--text-primary);">{{ meeting.original_filename|truncate(40) }}</strong>
+                                                {% if meeting.original_filename|length > 40 %}
+                                                <br><small style="color: var(--text-secondary);">{{ meeting.original_filename }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge status-{{ meeting.status }}">
+                                            {% if meeting.status == 'uploaded' %}
+                                                <i class="fa fa-clock"></i> 已上傳
+                                            {% elif meeting.status == 'processing' %}
+                                                <i class="fa fa-spinner fa-spin"></i> 處理中
+                                            {% elif meeting.status == 'completed' %}
+                                                <i class="fa fa-check-circle"></i> 已完成
+                                            {% elif meeting.status == 'failed' %}
+                                                <i class="fa fa-times-circle"></i> 失敗
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td style="color: var(--text-secondary);">
+                                        {{ moment(meeting.created_at).format('YYYY-MM-DD HH:mm') if meeting.created_at else '-' }}
+                                    </td>
+                                    <td style="color: var(--text-secondary);">
+                                        {% if meeting.duration %}
+                                            {{ "%.1f"|format(meeting.duration/60) }} 分鐘
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td style="color: var(--text-secondary);">
+                                        {{ meeting.num_speakers if meeting.num_speakers else '-' }}
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <a href="{{ url_for('meeting_detail', meeting_id=meeting.id) }}" 
+                                               class="btn btn-info btn-sm">
+                                                <i class="fa fa-eye"></i>
+                                            </a>
+                                            
+                                            {% if meeting.status == 'completed' %}
+                                            <div class="dropdown">
+                                                <button class="btn btn-success btn-sm dropdown-toggle" 
+                                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                    <i class="fa fa-download"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='srt') }}"><i class="fa fa-file-text"></i> SRT</a></li>
+                                                    <li><a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='speaker_srt') }}"><i class="fa fa-users"></i> 語者字幕</a></li>
+                                                    <li><a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='rttm') }}"><i class="fa fa-clock"></i> RTTM</a></li>
+                                                </ul>
+                                            </div>
+                                            {% elif meeting.status == 'processing' %}
+                                            <button class="btn btn-warning btn-sm" disabled>
+                                                <i class="fa fa-spinner fa-spin"></i>
+                                            </button>
+                                            {% elif meeting.status == 'failed' %}
+                                            <button class="btn btn-danger btn-sm" onclick="retryProcessing('{{ meeting.id }}')">
+                                                <i class="fa fa-refresh"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% else %}
+        <!-- 空狀態 -->
+        <div class="x_panel fade-in">
+            <div class="x_content">
+                <div style="text-align: center; padding: 4rem 2rem;">
+                    <i class="fa fa-inbox" style="font-size: 4rem; color: var(--text-light); margin-bottom: 1.5rem;"></i>
+                    <h3 style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem;">還沒有會議記錄</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 2rem;">上傳您的第一個會議音訊檔案開始使用</p>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                        <i class="fa fa-upload"></i> 立即上傳
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
@@ -199,12 +358,217 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-    // 使用 .fromNow() 進行相對時間顯示
-    $('.time-display').each(function() {
-        const timeStr = $(this).data('time');
-        if (timeStr && typeof moment !== 'undefined') {
-            $(this).text(moment(timeStr).fromNow());
-            $(this).attr('title', moment(timeStr).format('YYYY-MM-DD HH:mm:ss'));
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const viewToggleButtons = document.querySelectorAll('.view-toggle');
+    const gridView = document.getElementById('gridView');
+    const listView = document.getElementById('listView');
+    
+    // 搜尋和篩選功能
+    function filterMeetings() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedStatus = statusFilter.value;
+        const meetingItems = document.querySelectorAll('.meeting-item, .meeting-row');
+        
+        let visibleCount = 0;
+        
+        meetingItems.forEach(item => {
+            const filename = item.dataset.filename;
+            const status = item.dataset.status;
+            
+            const matchesSearch = filename.includes(searchTerm);
+            const matchesStatus = !selectedStatus || status === selectedStatus;
+            
+            if (matchesSearch && matchesStatus) {
+                item.style.display = 'block';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        // 如果沒有結果，顯示提示
+        updateEmptyState(visibleCount === 0);
+    }
+    
+    function updateEmptyState(isEmpty) {
+        const existingEmpty = document.getElementById('emptySearchState');
+        if (existingEmpty) {
+            existingEmpty.remove();
+        }
+        
+        if (isEmpty && (searchInput.value || statusFilter.value)) {
+            const emptyHtml = `
+                <div id="emptySearchState" class="col-md-12">
+                    <div class="x_panel">
+                        <div class="x_content">
+                            <div style="text-align: center; padding: 2rem;">
+                                <i class="fa fa-search" style="font-size: 3rem; color: var(--text-light); margin-bottom: 1rem;"></i>
+                                <h4 style="color: var(--text-primary);">沒有符合條件的會議記錄</h4>
+                                <p style="color: var(--text-secondary);">請嘗試調整搜尋條件或篩選器</p>
+                                <button class="btn btn-secondary" onclick="clearFilters()">
+                                    <i class="fa fa-refresh"></i> 清除篩選
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (document.querySelector('.view-toggle.active').dataset.view === 'grid') {
+                gridView.insertAdjacentHTML('beforeend', emptyHtml);
+            } else {
+                listView.insertAdjacentHTML('beforeend', emptyHtml);
+            }
+        }
+    }
+    
+    window.clearFilters = function() {
+        searchInput.value = '';
+        statusFilter.value = '';
+        filterMeetings();
+    };
+    
+    // 視圖切換功能
+    function switchView(viewType) {
+        viewToggleButtons.forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.background = 'var(--bg-secondary)';
+            btn.style.color = 'var(--text-secondary)';
+        });
+        
+        const activeBtn = document.querySelector(`[data-view="${viewType}"]`);
+        activeBtn.classList.add('active');
+        activeBtn.style.background = 'var(--primary-color)';
+        activeBtn.style.color = 'white';
+        
+        if (viewType === 'list') {
+            gridView.style.display = 'none';
+            listView.style.display = 'block';
+        } else {
+            gridView.style.display = 'block';
+            listView.style.display = 'none';
+        }
+        
+        // 重新應用篩選
+        filterMeetings();
+    }
+    
+    // 重試處理功能
+    window.retryProcessing = function(meetingId) {
+        if (confirm('確定要重新處理這個會議音訊嗎？')) {
+            // 顯示載入狀態
+            const button = event.target.closest('button');
+            const originalHtml = button.innerHTML;
+            button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 重新處理中...';
+            button.disabled = true;
+            
+            // 模擬 API 調用
+            setTimeout(() => {
+                // 這裡會是實際的 API 調用
+                alert('已開始重新處理，請稍候...');
+                location.reload(); // 重新載入頁面以顯示更新後的狀態
+            }, 1000);
+        }
+    };
+    
+    // 實時狀態更新（模擬）
+    function updateProcessingStatus() {
+        const processingItems = document.querySelectorAll('[data-status="processing"]');
+        
+        processingItems.forEach(item => {
+            // 模擬狀態檢查
+            // 在實際應用中，這裡會是 AJAX 調用到後端 API
+            if (Math.random() < 0.1) { // 10% 機率完成處理
+                // 更新為完成狀態
+                item.dataset.status = 'completed';
+                
+                // 更新狀態徽章
+                const statusBadge = item.querySelector('.status-badge');
+                if (statusBadge) {
+                    statusBadge.className = 'status-badge status-completed';
+                    statusBadge.innerHTML = '<i class="fa fa-check-circle"></i> 已完成';
+                }
+                
+                // 更新操作按鈕
+                const actionArea = item.querySelector('.btn-warning[disabled]')?.parentElement ||
+                                 item.querySelector('button:disabled')?.parentElement;
+                if (actionArea) {
+                    actionArea.innerHTML = `
+                        <div class="dropdown" style="flex: 1;">
+                            <button class="btn btn-success btn-sm dropdown-toggle" 
+                                    style="width: 100%; justify-content: center;"
+                                    data-toggle="dropdown">
+                                <i class="fa fa-download"></i> 下載
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a href="#"><i class="fa fa-file-text"></i> 字幕檔 (SRT)</a></li>
+                                <li><a href="#"><i class="fa fa-users"></i> 語者標註字幕</a></li>
+                                <li><a href="#"><i class="fa fa-clock"></i> 語者時間檔 (RTTM)</a></li>
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                // 更新統計數字
+                updateStatistics();
+            }
+        });
+    }
+    
+    function updateStatistics() {
+        // 重新計算統計數字
+        const allItems = document.querySelectorAll('[data-status]');
+        const completed = document.querySelectorAll('[data-status="completed"]').length;
+        const processing = document.querySelectorAll('[data-status="processing"]').length;
+        const failed = document.querySelectorAll('[data-status="failed"]').length;
+        const total = allItems.length;
+        
+        // 更新顯示（如果統計卡片存在）
+        const totalElement = document.querySelector('.tile_count .col-md-3:nth-child(1) .x_content div:last-child');
+        const completedElement = document.querySelector('.tile_count .col-md-3:nth-child(2) .x_content div:last-child');
+        const processingElement = document.querySelector('.tile_count .col-md-3:nth-child(3) .x_content div:last-child');
+        const failedElement = document.querySelector('.tile_count .col-md-3:nth-child(4) .x_content div:last-child');
+        
+        if (totalElement) totalElement.textContent = total;
+        if (completedElement) completedElement.textContent = completed;
+        if (processingElement) processingElement.textContent = processing;
+        if (failedElement) failedElement.textContent = failed;
+    }
+    
+    // 事件監聽器
+    searchInput.addEventListener('input', filterMeetings);
+    statusFilter.addEventListener('change', filterMeetings);
+    
+    viewToggleButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const viewType = e.target.closest('.view-toggle').dataset.view;
+            switchView(viewType);
+        });
+    });
+    
+    // 頁面載入動畫
+    const elements = document.querySelectorAll('.fade-in');
+    elements.forEach((el, index) => {
+        el.style.animationDelay = `${index * 0.05}s`;
+    });
+    
+    // 定期檢查處理狀態
+    setInterval(updateProcessingStatus, 5000); // 每5秒檢查一次
+    
+    // 鍵盤快捷鍵
+    document.addEventListener('keydown', function(e) {
+        // Ctrl + K 聚焦搜尋框
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            searchInput.focus();
+            searchInput.select();
+        }
+        
+        // ESC 清空搜尋
+        if (e.key === 'Escape' && document.activeElement === searchInput) {
+            clearFilters();
+            searchInput.blur();
         }
     });
 });

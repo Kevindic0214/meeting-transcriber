@@ -1,120 +1,761 @@
-/* 自定義樣式增強 */
-.upload-area {
-    border: 2px dashed #34495e;
-    border-radius: 10px;
-    padding: 40px;
-    text-align: center;
-    transition: all 0.3s ease;
-    background-color: #f8f9fa;
-}
+/* 現代化會議助手樣式 - 基於 Gentelella 框架增強 */
 
-.upload-area:hover {
-    border-color: #3498db;
-    background-color: #e3f2fd;
-}
-
-.upload-area.dragover {
-    border-color: #2ecc71;
-    background-color: #e8f5e8;
-}
-
-.status-badge {
-    padding: 5px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: bold;
-}
-
-.status-uploaded { background-color: #f39c12; color: white; }
-.status-processing { background-color: #3498db; color: white; }
-.status-completed { background-color: #27ae60; color: white; }
-.status-failed { background-color: #e74c3c; color: white; }
-
-.meeting-card {
-    transition: transform 0.2s ease;
-    border-left: 4px solid #3498db;
-}
-
-.meeting-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.progress-container {
-    margin: 20px 0;
-}
-
-.file-info {
-    background-color: #ecf0f1;
-    padding: 15px;
-    border-radius: 5px;
-    margin: 15px 0;
-}
-
-.download-buttons .btn {
-    margin: 5px;
-}
-
-/* 響應式設計增強 */
-@media (max-width: 768px) {
-    .upload-area {
-        padding: 20px;
-    }
+:root {
+    /* 現代化色彩系統 */
+    --primary-color: #4F46E5;
+    --primary-light: #6366F1;
+    --primary-dark: #3730A3;
+    --secondary-color: #10B981;
+    --accent-color: #F59E0B;
+    --danger-color: #EF4444;
+    --warning-color: #F59E0B;
+    --info-color: #3B82F6;
+    --success-color: #10B981;
     
-    .download-buttons .btn {
-        display: block;
-        width: 100%;
-        margin: 5px 0;
-    }
+    /* 文字顏色 */
+    --text-primary: #1F2937;
+    --text-secondary: #6B7280;
+    --text-light: #9CA3AF;
+    --text-white: #FFFFFF;
+    
+    /* 背景顏色 */
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F9FAFB;
+    --bg-accent: #F3F4F6;
+    --bg-hover: #F3F4F6;
+    
+    /* 邊框和陰影 */
+    --border-color: #E5E7EB;
+    --border-light: #F3F4F6;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    
+    /* 圓角和過渡 */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Meeting Detail Page Specific Styles */
-.processing-steps {
-    margin-top: 20px;
-}
+/* ==========================================================================
+   全局樣式增強 - 保持與 Gentelella 兼容
+   ========================================================================== */
 
-.processing-steps .step {
-    padding: 10px 0;
-    border-left: 3px solid #ddd;
-    padding-left: 20px;
-    margin-bottom: 10px;
+/* 增強 Gentelella 的面板樣式 */
+.x_panel {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    transition: var(--transition);
+    overflow: hidden;
     position: relative;
 }
 
+.x_panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--accent-color));
+}
+
+.x_panel:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+.x_title {
+    background: transparent;
+    border-bottom: 1px solid var(--border-light);
+    padding: 1.5rem 2rem;
+    margin: 0;
+}
+
+.x_title h2 {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.x_title h2 i {
+    color: var(--primary-color);
+    font-size: 1.25rem;
+}
+
+.x_content {
+    padding: 2rem;
+}
+
+/* ==========================================================================
+   現代化上傳區域 - 針對你的 upload-area 類別
+   ========================================================================== */
+
+.upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: 4rem 2rem;
+    text-align: center;
+    transition: var(--transition);
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+/* 添加微妙的動畫效果 */
+.upload-area::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(79, 70, 229, 0.08), transparent);
+    transition: left 0.6s ease;
+}
+
+.upload-area:hover {
+    border-color: var(--primary-color);
+    background: rgba(79, 70, 229, 0.02);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+}
+
+.upload-area:hover::before {
+    left: 100%;
+}
+
+.upload-area.dragover {
+    border-color: var(--secondary-color);
+    background: rgba(16, 185, 129, 0.05);
+    transform: scale(1.02);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+/* 增強上傳圖示 */
+.upload-area .fa-cloud-upload,
+.upload-area .fa-cloud-upload-alt {
+    font-size: 4rem;
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+    animation: float 3s ease-in-out infinite;
+    display: block;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+/* ==========================================================================
+   狀態徽章現代化 - 基於你的 status-badge 類別
+   ========================================================================== */
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    transition: var(--transition);
+    border: 1px solid transparent;
+}
+
+.status-uploaded { 
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+    color: #D97706;
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.status-processing { 
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+    color: #2563EB;
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.status-completed { 
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+    color: #059669;
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.status-failed { 
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+    color: #DC2626;
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+/* ==========================================================================
+   會議卡片現代化 - 針對你的 meeting-card 類別
+   ========================================================================== */
+
+.meeting-card {
+    background: var(--bg-primary);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    transition: var(--transition);
+    border: 1px solid var(--border-light);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.meeting-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+}
+
+.meeting-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-xl);
+    border-color: var(--primary-color);
+}
+
+/* ==========================================================================
+   按鈕樣式現代化 - 增強 Bootstrap 按鈕
+   ========================================================================== */
+
+.btn {
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 添加按鈕動畫效果 */
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    border: none;
+    color: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: white;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--success-color), #047857);
+    border: none;
+    color: white;
+}
+
+.btn-success:hover,
+.btn-success:focus {
+    background: linear-gradient(135deg, #059669, var(--success-color));
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: white;
+}
+
+.btn-info {
+    background: linear-gradient(135deg, var(--info-color), #1E40AF);
+    border: none;
+    color: white;
+}
+
+.btn-info:hover,
+.btn-info:focus {
+    background: linear-gradient(135deg, #2563EB, var(--info-color));
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: white;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, var(--warning-color), #D97706);
+    border: none;
+    color: white;
+}
+
+.btn-warning:hover,
+.btn-warning:focus {
+    background: linear-gradient(135deg, #F59E0B, var(--warning-color));
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: white;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--danger-color), #DC2626);
+    border: none;
+    color: white;
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+    background: linear-gradient(135deg, #EF4444, var(--danger-color));
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: white;
+}
+
+/* ==========================================================================
+   進度條現代化 - 針對你的 progress-container
+   ========================================================================== */
+
+.progress-container {
+    margin: 2rem 0;
+    background: var(--bg-primary);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-light);
+}
+
+.progress-container h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.progress {
+    height: 12px;
+    background: var(--bg-accent);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    border-radius: var(--radius-md);
+    transition: width var(--transition);
+    position: relative;
+}
+
+.progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background-image: linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.2) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0.2) 75%,
+        transparent 75%,
+        transparent
+    );
+    background-size: 30px 30px;
+    animation: progressMove 1s linear infinite;
+}
+
+@keyframes progressMove {
+    0% { background-position: 0 0; }
+    100% { background-position: 30px 30px; }
+}
+
+/* ==========================================================================
+   處理步驟現代化 - 針對你的 processing-steps
+   ========================================================================== */
+
+.processing-steps {
+    margin-top: 2rem;
+    position: relative;
+}
+
+.processing-steps::before {
+    content: '';
+    position: absolute;
+    left: 2rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--primary-color), var(--secondary-color));
+    opacity: 0.3;
+}
+
+.processing-steps .step {
+    padding: 1.5rem 0;
+    padding-left: 4rem;
+    position: relative;
+    transition: var(--transition);
+}
+
+.processing-steps .step::before {
+    content: '';
+    position: absolute;
+    left: 1.25rem;
+    top: 2rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--bg-accent);
+    border: 3px solid var(--border-color);
+    transition: var(--transition);
+}
+
+.processing-steps .step.completed::before {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+.processing-steps .step.active::before {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+    animation: pulse 2s infinite;
+}
+
 .processing-steps .step.completed {
-    border-left-color: #27ae60;
-    color: #27ae60;
+    color: var(--success-color);
 }
 
 .processing-steps .step.active {
-    border-left-color: #3498db;
-    color: #3498db;
-    font-weight: bold;
+    color: var(--primary-color);
+    font-weight: 600;
 }
 
-.processing-steps .step i {
-    position: absolute;
-    left: -12px;
-    top: 50%;
-    transform: translateY(-50%);
-    background-color: #fff;
-    border-radius: 50%;
-    padding: 3px;
-    font-size: 16px;
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
 }
+
+/* ==========================================================================
+   檔案資訊現代化 - 針對你的 file-info
+   ========================================================================== */
+
+.file-info {
+    background: linear-gradient(135deg, var(--bg-accent), var(--bg-secondary));
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-top: 2rem;
+    border-left: 4px solid var(--success-color);
+    position: relative;
+    overflow: hidden;
+    animation: slideInUp 0.4s ease-out;
+}
+
+.file-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.1), transparent);
+    border-radius: 50%;
+    transform: translate(30px, -30px);
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==========================================================================
+   字幕預覽現代化 - 針對你的 subtitle-preview
+   ========================================================================== */
 
 .subtitle-preview {
-    max-height: 400px;
+    max-height: 500px;
     overflow-y: auto;
-    border: 1px solid #ddd;
-    padding: 15px;
-    background-color: #fdfdfd;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    background: var(--bg-primary);
     white-space: pre-wrap;
-    line-height: 1.6;
-    margin-bottom: 15px;
+    line-height: 1.8;
+    margin-bottom: 1.5rem;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    box-shadow: var(--shadow-sm);
+}
+
+.subtitle-preview::-webkit-scrollbar {
+    width: 8px;
+}
+
+.subtitle-preview::-webkit-scrollbar-track {
+    background: var(--bg-accent);
+    border-radius: var(--radius-sm);
+}
+
+.subtitle-preview::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: var(--radius-sm);
+}
+
+.subtitle-preview::-webkit-scrollbar-thumb:hover {
+    background: var(--text-light);
 }
 
 .subtitle-controls {
-    text-align: right;
-    margin-top: 10px;
-} 
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+/* ==========================================================================
+   表格現代化 - 增強你的現有表格
+   ========================================================================== */
+
+.table {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-light);
+}
+
+.table thead th {
+    background: var(--bg-accent);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+.table tbody tr {
+    transition: var(--transition);
+    border: none;
+}
+
+.table tbody tr:hover {
+    background: var(--bg-hover);
+    transform: scale(1.001);
+}
+
+.table tbody td {
+    border: none;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+/* ==========================================================================
+   通知和警告現代化 - 增強 Bootstrap 的 alert
+   ========================================================================== */
+
+.alert {
+    border-radius: var(--radius-lg);
+    border: none;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.alert::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 4px;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.alert-success::before {
+    background: var(--success-color);
+}
+
+.alert-info {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+    color: #1E40AF;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.alert-info::before {
+    background: var(--info-color);
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+    color: #92400E;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.alert-warning::before {
+    background: var(--warning-color);
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+    color: #991B1B;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.alert-danger::before {
+    background: var(--danger-color);
+}
+
+/* ==========================================================================
+   響應式設計增強
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .upload-area {
+        padding: 2rem 1rem;
+    }
+    
+    .upload-area .fa-cloud-upload,
+    .upload-area .fa-cloud-upload-alt {
+        font-size: 3rem;
+    }
+    
+    .x_content {
+        padding: 1rem;
+    }
+    
+    .meeting-card {
+        padding: 1.5rem;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+        margin: 0.25rem 0;
+    }
+    
+    .processing-steps .step {
+        padding-left: 2rem;
+    }
+    
+    .processing-steps::before {
+        left: 0.75rem;
+    }
+    
+    .processing-steps .step::before {
+        left: 0;
+    }
+}
+
+/* ==========================================================================
+   動畫和載入效果
+   ========================================================================== */
+
+.fade-in {
+    animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    border-top-color: var(--primary-color);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ==========================================================================
+   特殊效果和微交互
+   ========================================================================== */
+
+/* 為所有可點擊元素添加微妙的反饋 */
+.btn, .upload-area, .meeting-card, .x_panel {
+    cursor: pointer;
+    user-select: none;
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+/* 為圖示添加微妙的動畫 */
+.fa-microphone, .fa-users, .fa-file-text, .fa-clock {
+    transition: var(--transition);
+}
+
+.x_title h2:hover .fa-microphone,
+.x_title h2:hover .fa-users,
+.x_title h2:hover .fa-file-text,
+.x_title h2:hover .fa-clock {
+    transform: scale(1.1);
+}
+
+/* 為狀態變化添加平滑過渡 */
+.status-badge {
+    transition: all 0.3s ease;
+}
+
+.status-badge:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-md);
+}

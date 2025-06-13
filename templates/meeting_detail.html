@@ -1164,12 +1164,49 @@ function sendEmail() {
 }
 
 function deleteRecord() {
-    if (confirm('確定要刪除這個會議記錄嗎？這個操作無法復原。')) {
-        showNotification('🗑️ 正在刪除記錄...', 'info');
-        setTimeout(() => {
-            window.location.href = "{{ url_for('meetings_list') }}";
-        }, 1000);
+    const meetingId = document.body.dataset.meetingId;
+    const meetingFilename = document.body.dataset.meetingFilename;
+
+    // 使用 PNotify 或 SweetAlert2 進行更美觀的確認
+    if (!confirm(`您確定要永久刪除會議 "${meetingFilename}" 嗎？\n\n這個操作無法復原，所有相關檔案和資料都將被刪除。`)) {
+        return;
     }
+
+    // 顯示正在刪除的提示
+    showNotification('🗑️ 正在刪除會議記錄...', 'info');
+
+    fetch(`/api/meeting/${meetingId}/delete`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            // 如果伺服器回應錯誤，則拋出包含狀態碼的錯誤
+            return response.json().then(err => { 
+                throw new Error(err.message || `伺服器錯誤: ${response.status}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            showNotification('✅ 會議記錄已成功刪除！正在返回列表...', 'success');
+            // 延遲一段時間後跳轉，讓使用者可以看到成功訊息
+            setTimeout(() => {
+                window.location.href = "{{ url_for('meetings_list') }}";
+            }, 2000);
+        } else {
+            // 處理後端返回的業務邏輯錯誤
+            throw new Error(data.message || '刪除失敗');
+        }
+    })
+    .catch(error => {
+        console.error('刪除操作失敗:', error);
+        // 顯示更詳細的錯誤訊息
+        showNotification(`❌ 刪除失敗: ${error.message}`, 'error');
+    });
 }
 
 function showNotification(message, type = 'info') {

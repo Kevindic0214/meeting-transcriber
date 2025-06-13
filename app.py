@@ -667,27 +667,83 @@ def clean_subtitle_content(content):
 
 
 def format_time(seconds):
-    """
-    將秒數格式化為可讀的時間格式 (HH:MM:SS)
+    """將秒數格式化為 HH:MM:SS 或 MM:SS"""
+    if not isinstance(seconds, (int, float)):
+        return "00:00"
     
-    這個輔助函數將浮點數秒數轉換為標準的時間顯示格式，
-    方便在前端顯示準確的時間戳記。
-    """
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     secs = int(seconds % 60)
     
     if hours > 0:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
-    else:
-        return f"{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
 
-if __name__ == '__main__':
-    # 初始化資料庫
-    init_db()
-    
-    # 確保資料夾存在
-    ensure_folders()
-    
-    # 啟動開發伺服器
-    app.run(debug=True, host='0.0.0.0', port=5000)
+@app.route('/api/meeting/<meeting_id>/delete', methods=['DELETE'])
+def delete_meeting(meeting_id):
+    """API: 刪除指定的會議記錄及其相關檔案"""
+    try:
+        # 1. 從資料庫獲取會議資訊
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM meetings WHERE id = ?", (meeting_id,))
+        meeting = cursor.fetchone()
+
+        if not meeting:
+            conn.close()
+            return jsonify({'status': 'error', 'message': '會議記錄不存在'}), 404
+
+        # 將查詢結果映射到字典
+        columns = [desc[0] for desc in cursor.description]
+        meeting_data = dict(zip(columns, meeting))
+        
+        # 2. 刪除相關檔案
+        folders = ensure_folders()
+        
+        # 刪除上傳的原始檔案
+        if meeting_data.get('filename'):
+            uploaded_file = folders['uploads'] / meeting_data['filename']
+            if uploaded_file.exists():
+                uploaded_file.unlink()
+                logger.info(f"已刪除上傳檔案: {uploaded_file}")
+
+        # 刪除處理過程中的檔案 (webm, wav)
+        processed_webm = folders['processed'] / f"{meeting_id}.webm"
+        if processed_webm.exists():
+            processed_webm.unlink()
+            logger.info(f"已刪除處理檔案: {processed_webm}")
+            
+        processed_wav = folders['processed'] / f"{meeting_id}.wav"
+        if processed_wav.exists():
+            processed_wav.unlink()
+            logger.info(f"已刪除處理檔案: {processed_wav}")
+
+        # 刪除輸出結果檔案 (srt, rttm, etc.)
+        for path_key in ['srt_path', 'rttm_path', 'speaker_srt_path']:
+            if meeting_data.get(path_key):
+                output_file = BASE_DIR / meeting_data[path_key]
+                if output_file.exists():
+                    output_file.unlink()
+                    logger.info(f"已刪除輸出檔案: {output_file}")
+        
+        # 3. 從資料庫刪除會議記錄
+        cursor.execute("DELETE FROM meetings WHERE id = ?", (meeting_id,))
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"已成功刪除會議記錄: {meeting_id}")
+        return jsonify({'status': 'success', 'message': '會議記錄已成功刪除'})
+
+    except sqlite3.Error as e:
+        logger.error(f"刪除會議時發生資料庫錯誤 (ID: {meeting_id}): {e}")
+        return jsonify({'status': 'error', 'message': '資料庫錯誤'}), 500
+    except Exception as e:
+        logger.error(f"刪除會議時發生未知錯誤 (ID: {meeting_id}): {e}")
+        return jsonify({'status': 'error', 'message': '伺服器內部錯誤'}), 500
+
+
+# 主程式入口
+if __name__ == "__main__":
+    init_db()  # 確保資料庫和表格已建立
+    ensure_folders() # 確保資料夾存在
+    app.run(debug=True, host='0.0.0.0', port=5001)

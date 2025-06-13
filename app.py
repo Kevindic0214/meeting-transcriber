@@ -3,25 +3,31 @@
 會議助手網站 - Flask + Gentelella
 整合 Whisper ASR + pyannote 語者辨識
 """
+import logging
 import os
+import shutil
+import sqlite3
 import sys
 import uuid
-import json
-import subprocess
-import shutil
-import logging
-from pathlib import Path
 from datetime import datetime
-from dotenv import load_dotenv
-from openai import OpenAI
-import srt
-from datetime import timedelta
-
-from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for
-from werkzeug.utils import secure_filename
+from pathlib import Path
 from threading import Thread
-import sqlite3
+
+import srt
+from dotenv import load_dotenv
+from flask import (
+    Flask,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
 from flask_moment import Moment
+from openai import OpenAI
+from werkzeug.utils import secure_filename
 
 from utils.audio_processing import AudioProcessor
 
@@ -746,4 +752,4 @@ def delete_meeting(meeting_id):
 if __name__ == "__main__":
     init_db()  # 確保資料庫和表格已建立
     ensure_folders() # 確保資料夾存在
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True, host='0.0.0.0', port=8080)

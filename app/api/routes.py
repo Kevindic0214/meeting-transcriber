@@ -88,7 +88,7 @@ def delete_meeting(meeting_id):
         config = current_app.config
         
         # 刪除上傳的原始檔案
-        if meeting.get('filename'):
+        if meeting['filename']:
             uploaded_file = config['UPLOADS_FOLDER'] / meeting['filename']
             if uploaded_file.exists():
                 uploaded_file.unlink()
@@ -103,7 +103,7 @@ def delete_meeting(meeting_id):
 
         # 刪除輸出結果檔案
         for path_key in ['srt_path', 'rttm_path', 'speaker_srt_path']:
-            if meeting.get(path_key):
+            if meeting[path_key]:
                 output_file = config['BASE_DIR'] / meeting[path_key]
                 if output_file.exists():
                     output_file.unlink()

@@ -1,0 +1,490 @@
+{% extends "base.html" %}
+
+{% block title %}{{ meeting.original_filename }} - 會議詳情{% endblock %}
+{% block page_title %}{{ meeting.original_filename|truncate(50) }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('main.meetings_list') }}" class="btn btn-secondary btn-sm">
+    <i class="fa fa-arrow-left"></i> 返回列表
+</a>
+{% if meeting.status == 'completed' %}
+<div class="btn-group">
+    <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-toggle="dropdown">
+        <i class="fa fa-download"></i> 下載檔案 <span class="caret"></span>
+    </button>
+    <ul class="dropdown-menu">
+        <li><a href="{{ url_for('main.download_file_route', meeting_id=meeting.id, file_type='srt') }}"><i class="fa fa-file-text"></i> 字幕檔 (SRT)</a></li>
+        <li><a href="{{ url_for('main.download_file_route', meeting_id=meeting.id, file_type='speaker_srt') }}"><i class="fa fa-users"></i> 語者標註字幕</a></li>
+        <li><a href="{{ url_for('main.download_file_route', meeting_id=meeting.id, file_type='rttm') }}"><i class="fa fa-clock"></i> 語者時間檔 (RTTM)</a></li>
+    </ul>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- 會議資訊卡片 -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="x_panel fade-in">
+            <div class="x_title">
+                <h2>
+                    <i class="fa fa-info-circle"></i> 會議資訊
+                    <span class="status-badge status-{{ meeting.status }}" style="margin-left: 1rem;">
+                        {% if meeting.status == 'uploaded' %}
+                            <i class="fa fa-clock"></i> 已上傳
+                        {% elif meeting.status == 'processing' %}
+                            <i class="fa fa-spinner fa-spin"></i> 處理中
+                        {% elif meeting.status == 'completed' %}
+                            <i class="fa fa-check-circle"></i> 已完成
+                        {% elif meeting.status == 'failed' %}
+                            <i class="fa fa-times-circle"></i> 失敗
+                        {% endif %}
+                    </span>
+                </h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 3rem; height: 3rem; background: linear-gradient(135deg, var(--primary-color), var(--primary-light)); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem;">
+                            <i class="fa fa-file"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0; font-size: 0.85rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">檔案名稱</h4>
+                            <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">{{ meeting.original_filename }}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 3rem; height: 3rem; background: linear-gradient(135deg, var(--info-color), #1E40AF); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem;">
+                            <i class="fa fa-calendar"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0; font-size: 0.85rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">上傳時間</h4>
+                            <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">{{ meeting.created_at if meeting.created_at else '-' }}</span>
+                        </div>
+                    </div>
+                    
+                    {% if meeting.duration %}
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 3rem; height: 3rem; background: linear-gradient(135deg, var(--success-color), #047857); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem;">
+                            <i class="fa fa-clock"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0; font-size: 0.85rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">會議時長</h4>
+                            <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">{{ "%.1f"|format(meeting.duration/60) }} 分鐘</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if meeting.num_speakers %}
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 3rem; height: 3rem; background: linear-gradient(135deg, var(--accent-color), #D97706); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem;">
+                            <i class="fa fa-users"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0; font-size: 0.85rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">語者數量</h4>
+                            <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">{{ meeting.num_speakers }} 位發言者</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if meeting.error_message %}
+                <div class="alert alert-danger" style="margin-top: 2rem;">
+                    <h4><i class="fa fa-exclamation-triangle"></i> 處理錯誤</h4>
+                    <p>{{ meeting.error_message }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 主要內容區域 -->
+    <div class="col-md-8">
+        {% if meeting.status == 'processing' %}
+        <!-- 處理進度顯示 -->
+        <div class="x_panel fade-in">
+            <div class="x_title">
+                <h2><i class="fa fa-spinner fa-spin"></i> 處理進度</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div class="progress progress-striped active" style="margin-bottom: 2rem;">
+                    <div class="progress-bar progress-bar-info" style="width: 65%"></div>
+                </div>
+                <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">正在處理您的會議音訊，預計還需要幾分鐘時間...</p>
+                
+                <div class="processing-steps">
+                    <div class="step completed">
+                        <i class="fa fa-check"></i> 檔案上傳完成
+                    </div>
+                    <div class="step completed">
+                        <i class="fa fa-check"></i> 音訊預處理完成
+                    </div>
+                    <div class="step active">
+                        <i class="fa fa-cog fa-spin"></i> 語音轉文字進行中
+                    </div>
+                    <div class="step">
+                        <i class="fa fa-circle-o"></i> 語者辨識
+                    </div>
+                    <div class="step">
+                        <i class="fa fa-circle-o"></i> 生成結果檔案
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% elif meeting.status == 'completed' and meeting.speaker_srt_path %}
+        <!-- 字幕預覽 -->
+        <div class="x_panel fade-in">
+            <div class="x_title">
+                <h2><i class="fa fa-comments"></i> 會議記錄</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div class="subtitle-controls" style="margin-bottom: 1rem;">
+                    <button class="btn btn-info btn-sm" onclick="toggleSubtitleMode()">
+                        <i class="fa fa-user-tag"></i> <span id="modeToggleText">隱藏語者標籤</span>
+                    </button>
+                    <button class="btn btn-success btn-sm" onclick="copySubtitleText()">
+                        <i class="fa fa-copy"></i> 複製文字
+                    </button>
+                    <button class="btn btn-warning btn-sm" onclick="searchInTranscript()">
+                        <i class="fa fa-search"></i> 搜尋內容
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="exportTranscript()">
+                        <i class="fa fa-file-export"></i> 匯出文字
+                    </button>
+                </div>
+                
+                <div class="subtitle-preview" id="subtitlePreview">
+                    <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                        <i class="fa fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                        <p>載入字幕內容中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 會議摘要 -->
+        <div class="x_panel fade-in">
+            <div class="x_title">
+                <h2><i class="fa fa-lightbulb"></i> AI 會議摘要</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div style="background: linear-gradient(135deg, var(--bg-secondary), var(--bg-accent)); padding: 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa fa-list-alt"></i> 主要討論點
+                    </h3>
+                    <ul style="margin-bottom: 2rem; padding-left: 1.5rem; line-height: 1.8; color: var(--text-primary);">
+                        <li>產品開發策略與市場定位討論</li>
+                        <li>技術架構優化方案評估</li>
+                        <li>團隊資源配置與時程安排</li>
+                        <li>用戶反饋分析與改進方向</li>
+                    </ul>
+                    
+                    <h3 style="color: var(--success-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa fa-check-square"></i> 決議事項
+                    </h3>
+                    <ul style="margin-bottom: 2rem; padding-left: 1.5rem; line-height: 1.8; color: var(--text-primary);">
+                        <li>確認下季度產品路線圖</li>
+                        <li>批准技術債務清理計劃</li>
+                        <li>同意增加前端開發人力</li>
+                        <li>設定用戶體驗改善目標</li>
+                    </ul>
+                    
+                    <h3 style="color: var(--warning-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa fa-tasks"></i> 行動項目
+                    </h3>
+                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: var(--radius-md); border-left: 4px solid var(--warning-color);">
+                        <div style="margin-bottom: 1rem;">
+                            <strong style="color: var(--text-primary);">發言者A：</strong>
+                            <span style="color: var(--text-secondary);">完成市場調研報告，截止日期：下週五</span>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <strong style="color: var(--text-primary);">發言者B：</strong>
+                            <span style="color: var(--text-secondary);">技術架構文檔更新，截止日期：本週三</span>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <strong style="color: var(--text-primary);">發言者C：</strong>
+                            <span style="color: var(--text-secondary);">招聘計劃制定，截止日期：下週一</span>
+                        </div>
+                        <div>
+                            <strong style="color: var(--text-primary);">發言者D：</strong>
+                            <span style="color: var(--text-secondary);">用戶訪談安排，截止日期：下週三</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 側邊欄 -->
+    <div class="col-md-4">
+        <!-- 快速操作 -->
+        <div class="x_panel fade-in">
+            <div class="x_title">
+                <h2><i class="fa fa-bolt"></i> 快速操作</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                {% if meeting.status == 'completed' %}
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <a href="{{ url_for('main.download_file_route', meeting_id=meeting.id, file_type='speaker_srt') }}" 
+                       class="btn btn-success" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; text-decoration: none; border-radius: var(--radius-md);">
+                        <div style="width: 2.5rem; height: 2.5rem; background: rgba(255,255,255,0.2); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;">
+                            <i class="fa fa-users"></i>
+                        </div>
+                        <div style="flex: 1; text-align: left;">
+                            <div style="font-weight: 600; margin-bottom: 0.25rem;">語者標註字幕</div>
+                            <small style="opacity: 0.8;">包含發言者資訊的完整字幕</small>
+                        </div>
+                    </a>
+                    
+                    <button class="btn btn-info" onclick="shareResults()" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border-radius: var(--radius-md);">
+                        <div style="width: 2.5rem; height: 2.5rem; background: rgba(255,255,255,0.2); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;">
+                            <i class="fa fa-share"></i>
+                        </div>
+                        <div style="flex: 1; text-align: left;">
+                            <div style="font-weight: 600; margin-bottom: 0.25rem;">分享結果</div>
+                            <small style="opacity: 0.8;">產生分享連結或匯出報告</small>
+                        </div>
+                    </button>
+
+                    <a href="{{ url_for('main.download_file_route', meeting_id=meeting.id, file_type='srt') }}" 
+                       class="btn btn-secondary" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border-radius: var(--radius-md);">
+                        <div style="width: 2.5rem; height: 2.5rem; background: rgba(255,255,255,0.2); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;">
+                            <i class="fa fa-file-text-o"></i>
+                        </div>
+                        <div style="flex: 1; text-align: left;">
+                            <div style="font-weight: 600; margin-bottom: 0.25rem;">下載原始 SRT</div>
+                            <small style="opacity: 0.8;">不含語者資訊的純文字字幕</small>
+                        </div>
+                    </a>
+                    
+                    <button id="deleteBtn" class="btn btn-danger" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border-radius: var(--radius-md);">
+                         <div style="width: 2.5rem; height: 2.5rem; background: rgba(255,255,255,0.2); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;">
+                            <i class="fa fa-trash"></i>
+                        </div>
+                        <div style="flex: 1; text-align: left;">
+                            <div style="font-weight: 600; margin-bottom: 0.25rem;">刪除會議</div>
+                            <small style="opacity: 0.8;">將永久刪除此會議記錄及其所有相關檔案</small>
+                        </div>
+                    </button>
+                </div>
+                {% else %}
+                <p>會議處理完成後，您將可以在此處進行快速操作。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // 檢查會議狀態，如果仍在處理中，則定期重新整理頁面
+    document.addEventListener('DOMContentLoaded', function() {
+        const meetingStatus = '{{ meeting.status }}';
+        if (meetingStatus === 'processing' || meetingStatus === 'uploaded') {
+            setTimeout(() => {
+                location.reload();
+            }, 10000); // 每 10 秒重新整理一次
+        }
+
+        if (meetingStatus === 'completed' && document.getElementById('subtitlePreview')) {
+            fetchSubtitleContent();
+        }
+    });
+
+    function fetchSubtitleContent() {
+        // 使用 API 端點獲取字幕內容
+        fetch(`/api/meeting/{{ meeting.id }}/subtitle/formatted`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                const previewDiv = document.getElementById('subtitlePreview');
+                let htmlContent = '<div class="subtitle-lines">';
+                
+                data.segments.forEach(segment => {
+                    htmlContent += `
+                        <div class="subtitle-segment" data-start="${segment.start_time}">
+                            <div class="timestamp">${segment.start_time_formatted}</div>
+                            <div class="content">
+                                <span class="speaker-tag" data-speaker="${segment.speaker}">${segment.speaker}: </span>
+                                <span class="text">${segment.content}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                htmlContent += '</div>';
+                previewDiv.innerHTML = htmlContent;
+            })
+            .catch(error => {
+                console.error('無法載入字幕:', error);
+                const previewDiv = document.getElementById('subtitlePreview');
+                previewDiv.innerHTML = `
+                    <div style="text-align: center; color: var(--danger-color); padding: 2rem;">
+                        <i class="fa fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                        <p>無法載入字幕內容。請稍後再試。</p>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+            });
+    }
+
+    let isSpeakerMode = true;
+    function toggleSubtitleMode() {
+        const segments = document.querySelectorAll('.subtitle-segment');
+        const buttonText = document.getElementById('modeToggleText');
+        isSpeakerMode = !isSpeakerMode;
+
+        segments.forEach(seg => {
+            const speakerTag = seg.querySelector('.speaker-tag');
+            speakerTag.style.display = isSpeakerMode ? 'inline' : 'none';
+        });
+
+        buttonText.textContent = isSpeakerMode ? '隱藏語者標籤' : '顯示語者標籤';
+    }
+
+    function copySubtitleText() {
+        const subtitleContainer = document.getElementById('subtitlePreview');
+        let textToCopy = '';
+        subtitleContainer.querySelectorAll('.subtitle-segment').forEach(segment => {
+            const timestamp = segment.querySelector('.timestamp').innerText;
+            const speaker = segment.querySelector('.speaker-tag').innerText;
+            const content = segment.querySelector('.text').innerText;
+            if (isSpeakerMode) {
+                textToCopy += `${timestamp} ${speaker}${content}\n`;
+            } else {
+                textToCopy += `${timestamp} ${content}\n`;
+            }
+        });
+        navigator.clipboard.writeText(textToCopy.trim()).then(() => {
+            Swal.fire({
+                icon: 'success',
+                title: '已複製!',
+                text: '會議記錄已複製到您的剪貼簿。',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        });
+    }
+
+    function searchInTranscript() {
+        Swal.fire({
+            title: '在記錄中搜尋',
+            input: 'text',
+            inputAttributes: {
+                autocapitalize: 'off'
+            },
+            showCancelButton: true,
+            confirmButtonText: '搜尋',
+            showLoaderOnConfirm: true,
+            preConfirm: (query) => {
+                const segments = document.querySelectorAll('.subtitle-segment .text');
+                let matchCount = 0;
+                segments.forEach(seg => {
+                    // 先移除之前的高亮
+                    seg.innerHTML = seg.innerText;
+
+                    if (query && seg.innerText.toLowerCase().includes(query.toLowerCase())) {
+                        matchCount++;
+                        const regex = new RegExp(`(${query})`, 'gi');
+                        seg.innerHTML = seg.innerText.replace(regex, `<mark>$1</mark>`);
+                    }
+                });
+                return matchCount;
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: `找到 ${result.value} 個結果`,
+                    icon: 'success'
+                });
+            }
+        });
+    }
+
+    function exportTranscript() {
+        const subtitleContainer = document.getElementById('subtitlePreview');
+        let textToExport = '';
+        subtitleContainer.querySelectorAll('.subtitle-segment').forEach(segment => {
+            const timestamp = segment.querySelector('.timestamp').innerText;
+            const speaker = segment.querySelector('.speaker-tag').innerText;
+            const content = segment.querySelector('.text').innerText;
+            if (isSpeakerMode) {
+                textToExport += `${timestamp} ${speaker}${content}\n`;
+            } else {
+                textToExport += `${timestamp} ${content}\n`;
+            }
+        });
+        
+        const blob = new Blob([textToExport], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `{{ meeting.original_filename }}_transcript.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    
+    // 刪除按鈕的事件監聽
+    document.getElementById('deleteBtn').addEventListener('click', function() {
+        Swal.fire({
+            title: '您確定嗎？',
+            text: "此操作將永久刪除此會議記錄及其所有相關檔案，且無法復原！",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: '是的，刪除它！',
+            cancelButtonText: '取消'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/api/meeting/{{ meeting.id }}/delete`, {
+                    method: 'DELETE',
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire(
+                            '已刪除!',
+                            '會議記錄已成功刪除。',
+                            'success'
+                        ).then(() => {
+                            window.location.href = "{{ url_for('main.meetings_list') }}";
+                        });
+                    } else {
+                        Swal.fire(
+                            '刪除失敗!',
+                            data.message || '刪除過程中發生錯誤。',
+                            'error'
+                        );
+                    }
+                })
+                .catch(error => {
+                    Swal.fire(
+                        '網路錯誤!',
+                        '無法連接到伺服器。',
+                        'error'
+                    );
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

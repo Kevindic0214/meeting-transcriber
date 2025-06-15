@@ -4,7 +4,7 @@
 {% block page_title %}會議記錄{% endblock %}
 
 {% block page_actions %}
-<a href="{{ url_for('index') }}" class="btn btn-primary btn-sm">
+<a href="{{ url_for('main.index') }}" class="btn btn-primary btn-sm">
     <i class="fa fa-upload"></i> 上傳新檔案
 </a>
 {% endblock %}
@@ -193,7 +193,7 @@
                     </div>
                     
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                        <a href="{{ url_for('meeting_detail', meeting_id=meeting.id) }}" 
+                        <a href="{{ url_for('main.meeting_detail', meeting_id=meeting.id) }}" 
                            class="btn btn-info btn-sm" 
                            style="flex: 1; justify-content: center;">
                             <i class="fa fa-eye"></i> 查看詳情
@@ -208,17 +208,17 @@
                             </button>
                             <ul class="dropdown-menu" style="min-width: 100%;">
                                 <li>
-                                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='srt') }}">
+                                    <a href="{{ url_for('main.download_file_route', meeting_id=meeting.id, file_type='srt') }}">
                                         <i class="fa fa-file-text"></i> 字幕檔 (SRT)
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='speaker_srt') }}">
+                                    <a href="{{ url_for('main.download_file_route', meeting_id=meeting.id, file_type='speaker_srt') }}">
                                         <i class="fa fa-users"></i> 語者標註字幕
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='rttm') }}">
+                                    <a href="{{ url_for('main.download_file_route', meeting_id=meeting.id, file_type='rttm') }}">
                                         <i class="fa fa-clock"></i> 語者時間檔 (RTTM)
                                     </a>
                                 </li>
@@ -299,7 +299,7 @@
                                     </td>
                                     <td>
                                         <div style="display: flex; gap: 0.5rem;">
-                                            <a href="{{ url_for('meeting_detail', meeting_id=meeting.id) }}" 
+                                            <a href="{{ url_for('main.meeting_detail', meeting_id=meeting.id) }}" 
                                                class="btn btn-info btn-sm">
                                                 <i class="fa fa-eye"></i>
                                             </a>
@@ -311,9 +311,9 @@
                                                     <i class="fa fa-download"></i>
                                                 </button>
                                                 <ul class="dropdown-menu">
-                                                    <li><a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='srt') }}"><i class="fa fa-file-text"></i> SRT</a></li>
-                                                    <li><a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='speaker_srt') }}"><i class="fa fa-users"></i> 語者字幕</a></li>
-                                                    <li><a href="{{ url_for('download_file', meeting_id=meeting.id, file_type='rttm') }}"><i class="fa fa-clock"></i> RTTM</a></li>
+                                                    <li><a href="{{ url_for('main.download_file_route', meeting_id=meeting.id, file_type='srt') }}"><i class="fa fa-file-text"></i> SRT</a></li>
+                                                    <li><a href="{{ url_for('main.download_file_route', meeting_id=meeting.id, file_type='speaker_srt') }}"><i class="fa fa-users"></i> 語者字幕</a></li>
+                                                    <li><a href="{{ url_for('main.download_file_route', meeting_id=meeting.id, file_type='rttm') }}"><i class="fa fa-clock"></i> RTTM</a></li>
                                                 </ul>
                                             </div>
                                             {% elif meeting.status == 'processing' %}
@@ -344,7 +344,7 @@
                     <i class="fa fa-inbox" style="font-size: 4rem; color: var(--text-light); margin-bottom: 1.5rem;"></i>
                     <h3 style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem;">還沒有會議記錄</h3>
                     <p style="color: var(--text-secondary); margin-bottom: 2rem;">上傳您的第一個會議音訊檔案開始使用</p>
-                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                    <a href="{{ url_for('main.index') }}" class="btn btn-primary btn-lg">
                         <i class="fa fa-upload"></i> 立即上傳
                     </a>
                 </div>

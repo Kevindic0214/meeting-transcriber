@@ -1,0 +1,999 @@
+{% extends "base.html" %}
+
+{% block title %}上傳音訊 - 會議助手{% endblock %}
+{% block page_title %}上傳會議音訊{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('main.meetings_list') }}" class="btn btn-info btn-sm">
+    <i class="fa fa-list"></i> 查看所有會議
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- 主要上傳區域 - 改為中央對齊的單欄設計 -->
+<div class="row">
+    <div class="col-lg-10 col-lg-offset-1 col-md-12">
+        <div class="x_panel fade-in upload-main-panel">
+            <div class="x_title">
+                <h2><i class="fa fa-cloud-upload"></i> 上傳會議音訊檔案</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <!-- 支援的格式說明 - 使用特殊類別避免被誤刪 -->
+                <div class="alert alert-info format-info-permanent">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4><i class="fa fa-info-circle"></i> 支援格式</h4>
+                            <p><strong>檔案格式：</strong>M4A、MP3、WAV、FLAC、WebM (最大 500MB)</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h4><i class="fa fa-magic"></i> AI 處理</h4>
+                            <p>語音轉文字 → 語者辨識 → 智慧摘要</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 上傳表單 -->
+                <form id="uploadForm" action="{{ url_for('main.upload_file') }}" method="post" enctype="multipart/form-data">
+                    <!-- 拖放上傳區域 - 改為更大、更突出的設計 -->
+                    <div class="upload-area enhanced" id="uploadArea">
+                        <div class="upload-content">
+                            <div class="upload-icon">
+                                <i class="fa fa-cloud-upload"></i>
+                            </div>
+                            <h3>拖放音訊檔案到此處</h3>
+                            <p class="upload-subtitle">或點擊下方按鈕選擇檔案</p>
+                            <input type="file" id="fileInput" name="file" accept=".m4a,.mp3,.wav,.flac,.webm" style="display: none;">
+                            <button type="button" class="btn btn-primary btn-lg upload-btn" onclick="document.getElementById('fileInput').click();">
+                                <i class="fa fa-folder-open"></i> 選擇檔案
+                            </button>
+                        </div>
+                        
+                        <!-- 檔案資訊顯示區域 -->
+                        <div id="fileInfo" class="file-info enhanced" style="display: none;">
+                            <div class="file-preview">
+                                <div class="file-icon">
+                                    <i class="fa fa-file-audio-o"></i>
+                                </div>
+                                <div class="file-details">
+                                    <h5 id="fileName"></h5>
+                                    <p id="fileSize" class="file-meta"></p>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success btn-lg process-btn">
+                                <i class="fa fa-upload"></i> 開始上傳並處理
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- 上傳進度條 -->
+                <div id="uploadProgress" class="progress-container enhanced" style="display: none;">
+                    <div class="progress-header">
+                        <h4><i class="fa fa-spinner fa-spin"></i> 檔案處理中...</h4>
+                        <p id="progressText" class="progress-description">準備中...</p>
+                    </div>
+                    
+                    <div class="progress progress-striped active">
+                        <div class="progress-bar progress-bar-success" id="progressBar" style="width: 0%"></div>
+                    </div>
+                    
+                    <!-- 處理步驟指示器 - 改為橫向卡片式 -->
+                    <div class="processing-steps-horizontal" id="processingSteps">
+                        <div class="step-card active" id="step1">
+                            <div class="step-icon">
+                                <i class="fa fa-upload"></i>
+                            </div>
+                            <div class="step-label">檔案上傳</div>
+                        </div>
+                        <div class="step-card" id="step2">
+                            <div class="step-icon">
+                                <i class="fa fa-circle-o"></i>
+                            </div>
+                            <div class="step-label">音訊預處理</div>
+                        </div>
+                        <div class="step-card" id="step3">
+                            <div class="step-icon">
+                                <i class="fa fa-circle-o"></i>
+                            </div>
+                            <div class="step-label">語音轉文字</div>
+                        </div>
+                        <div class="step-card" id="step4">
+                            <div class="step-icon">
+                                <i class="fa fa-circle-o"></i>
+                            </div>
+                            <div class="step-label">語者辨識</div>
+                        </div>
+                        <div class="step-card" id="step5">
+                            <div class="step-icon">
+                                <i class="fa fa-circle-o"></i>
+                            </div>
+                            <div class="step-label">生成結果</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 進階設定與說明 - 改為可摺疊的橫向布局 -->
+<div class="row" id="advancedSection">
+    <div class="col-md-6">
+        <div class="x_panel fade-in">
+            <div class="x_title">
+                <h2><i class="fa fa-cogs"></i> 進階設定</h2>
+                <ul class="nav navbar-right panel_toolbox">
+                    <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+                </ul>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div class="form-group">
+                    <label for="numSpeakers">預期語者數量（可選）</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="numSpeakers" name="num_speakers" 
+                               min="1" max="10" placeholder="系統自動偵測" form="uploadForm">
+                        <span class="input-group-addon">人</span>
+                    </div>
+                    <small class="help-block">
+                        輸入預期發言人數可提高語者辨識準確度
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" id="autoProcess" checked form="uploadForm"> 
+                            上傳後自動開始處理
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>音訊品質建議</label>
+                    <div class="well well-sm">
+                        <ul class="list-unstyled quality-tips">
+                            <li><i class="fa fa-check text-success"></i> 使用清晰的錄音設備</li>
+                            <li><i class="fa fa-check text-success"></i> 避免背景噪音干擾</li>
+                            <li><i class="fa fa-check text-success"></i> 確保音量適中</li>
+                            <li><i class="fa fa-check text-success"></i> 建議長度不超過 2 小時</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="x_panel fade-in">
+            <div class="x_title">
+                <h2><i class="fa fa-question-circle"></i> AI 處理流程</h2>
+                <ul class="nav navbar-right panel_toolbox">
+                    <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+                </ul>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div class="timeline-compact">
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-info"></div>
+                        <div class="timeline-content">
+                            <h6>音訊預處理</h6>
+                            <p>格式轉換與音質優化</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-primary"></div>
+                        <div class="timeline-content">
+                            <h6>語音轉文字</h6>
+                            <p>OpenAI Whisper AI 轉錄</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-warning"></div>
+                        <div class="timeline-content">
+                            <h6>語者辨識</h6>
+                            <p>智慧識別不同發言者</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-success"></div>
+                        <div class="timeline-content">
+                            <h6>智慧分析</h6>
+                            <p>生成摘要與行動項目</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 最近的處理記錄 - 改為摺疊式 -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="x_panel fade-in">
+            <div class="x_title">
+                <h2><i class="fa fa-clock-o"></i> 最近的處理記錄</h2>
+                <ul class="nav navbar-right panel_toolbox">
+                    <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+                </ul>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content" style="display: none;">
+                <div id="recentMeetings">
+                    <div class="text-center" style="padding: 2rem;">
+                        <i class="fa fa-spinner fa-spin fa-2x text-primary"></i>
+                        <p class="text-muted" style="margin-top: 1rem;">載入最近的會議記錄...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ===== 主要上傳區域樣式 ===== */
+.upload-main-panel {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    border: none;
+}
+
+.format-info-permanent {
+    border-radius: 6px;
+    border-left: 4px solid #5bc0de !important;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+}
+
+.upload-area.enhanced {
+    background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+    border: 2px dashed #ddd;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-area.enhanced:hover {
+    border-color: #5cb85c;
+    background: linear-gradient(135deg, #f0fff4 0%, #f8fff8 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(92, 184, 92, 0.15);
+}
+
+.upload-area.enhanced.dragover {
+    border-color: #5cb85c;
+    background: linear-gradient(135deg, #e8f5e8 0%, #f0fff4 100%);
+    transform: scale(1.02);
+}
+
+.upload-icon {
+    font-size: 4rem;
+    color: #5cb85c;
+    margin-bottom: 1rem;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    60% { transform: translateY(-5px); }
+}
+
+.upload-content h3 {
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.upload-subtitle {
+    color: #666;
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+}
+
+.upload-btn {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.upload-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(51, 122, 183, 0.3);
+}
+
+/* ===== 檔案預覽樣式 ===== */
+.file-info.enhanced {
+    background: linear-gradient(135deg, #e8f5e8 0%, #f0fff4 100%);
+    border: 1px solid #5cb85c;
+    border-radius: 8px;
+    padding: 2rem;
+    animation: slideIn 0.5s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.file-preview {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.file-icon {
+    font-size: 3rem;
+    color: #5cb85c;
+    margin-right: 1rem;
+}
+
+.file-details h5 {
+    margin: 0;
+    font-weight: 600;
+    color: #333;
+}
+
+.file-meta {
+    margin: 0.25rem 0 0 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.process-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1rem;
+    border-radius: 6px;
+}
+
+/* ===== 進度條樣式 ===== */
+.progress-container.enhanced {
+    background: #fff;
+    border: 1px solid #e3e3e3;
+    border-radius: 8px;
+    padding: 2rem;
+    animation: fadeIn 0.5s ease;
+}
+
+.progress-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.progress-header h4 {
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.progress-description {
+    color: #666;
+    font-size: 1rem;
+}
+
+/* ===== 橫向步驟指示器 ===== */
+.processing-steps-horizontal {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.step-card {
+    flex: 1;
+    min-width: 120px;
+    background: #f8f9fa;
+    border: 1px solid #e3e3e3;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.step-card.active {
+    background: linear-gradient(135deg, #5cb85c, #4cae4c);
+    border-color: #5cb85c;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(92, 184, 92, 0.3);
+}
+
+.step-card.completed {
+    background: linear-gradient(135deg, #5bc0de, #46b8da);
+    border-color: #5bc0de;
+    color: white;
+}
+
+.step-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.step-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* ===== 時間軸樣式優化 ===== */
+.timeline-compact {
+    position: relative;
+    padding-left: 25px;
+}
+
+.timeline-compact::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #5bc0de, #5cb85c);
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -18px;
+    top: 3px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #ddd;
+}
+
+.timeline-content h6 {
+    margin: 0 0 0.25rem 0;
+    font-weight: 600;
+    color: #333;
+}
+
+.timeline-content p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* ===== 品質提示樣式 ===== */
+.quality-tips li {
+    padding: 0.25rem 0;
+    font-size: 0.9rem;
+}
+
+.quality-tips .fa {
+    margin-right: 0.5rem;
+}
+
+/* ===== 響應式設計 ===== */
+@media (max-width: 768px) {
+    .upload-area.enhanced {
+        padding: 2rem 1rem;
+    }
+    
+    .upload-icon {
+        font-size: 3rem;
+    }
+    
+    .processing-steps-horizontal {
+        flex-direction: column;
+    }
+    
+    .step-card {
+        margin-bottom: 0.5rem;
+    }
+    
+    .format-info .row .col-md-8,
+    .format-info .row .col-md-4 {
+        margin-bottom: 1rem;
+    }
+}
+
+/* ===== 淡入動畫 ===== */
+.fade-in {
+    animation: fadeIn 0.6s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== 背景色彩變數兼容 ===== */
+.bg-info { background-color: #5bc0de !important; }
+.bg-primary { background-color: #337ab7 !important; }
+.bg-warning { background-color: #f0ad4e !important; }
+.bg-success { background-color: #5cb85c !important; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // ===== 調試功能 =====
+    console.log('🔍 開始調試模式');
+    
+    // 檢查 Gentelella 腳本
+    console.log('🔎 檢查 Gentelella 腳本:');
+    
+    // 尋找所有已載入的腳本
+    const allScripts = Array.from(document.scripts).map(s => s.src);
+    const gentelellaScript = allScripts.find(src => src.includes('gentelella') && src.includes('custom.min.js'));
+    
+    if (gentelellaScript) {
+        console.log('✅ 找到 Gentelella 腳本:', gentelellaScript);
+        
+        // 嘗試檢查 Gentelella 中可能影響 Alert 的函數
+        console.log('🔍 檢查 Gentelella 中的 Alert 相關功能:');
+        
+        // 檢查是否有自動關閉 alert 的代碼
+        if (typeof $.fn.alert !== 'undefined') {
+            console.log('  Bootstrap Alert 插件: ✅ 已載入');
+            console.log('  Alert 原始方法:', $.fn.alert.Constructor.prototype);
+        } else {
+            console.log('  Bootstrap Alert 插件: ❌ 未載入');
+        }
+        
+        // 檢查 Gentelella 是否修改了 alert 相關方法
+        if (window.Gentelella) {
+            console.log('  Gentelella 全局對象:', window.Gentelella);
+        } else {
+            console.log('  未找到 Gentelella 全局對象');
+        }
+        
+        // 檢查是否有任何全局函數處理 alert
+        const possibleAlertHandlers = [
+            'closeAlert', 
+            'hideAlert', 
+            'dismissAlert', 
+            'handleAlert', 
+            'autoCloseAlert'
+        ];
+        
+        possibleAlertHandlers.forEach(handler => {
+            if (typeof window[handler] === 'function') {
+                console.log(`  找到可能的 Alert 處理函數: ${handler}`);
+            }
+        });
+        
+        // 檢查 document 上是否有 alert 相關事件
+        try {
+            const docEvents = $._data(document, 'events') || {};
+            console.log('  Document 事件:', docEvents);
+            
+            // 特別檢查點擊事件中是否有 alert 相關處理
+            if (docEvents.click) {
+                docEvents.click.forEach((handler, i) => {
+                    const handlerStr = handler.handler.toString();
+                    if (handlerStr.includes('alert') || handlerStr.includes('dismiss')) {
+                        console.log(`  點擊事件 #${i} 可能處理 Alert:`, handlerStr.substring(0, 100) + '...');
+                    }
+                });
+            }
+        } catch (e) {
+            console.log('  無法檢查文檔事件:', e);
+        }
+    } else {
+        console.warn('⚠️ 未找到 Gentelella 腳本');
+    }
+    
+    // 監控格式說明區域
+    const formatInfo = document.querySelector('.format-info-permanent');
+    if (formatInfo) {
+        console.log('✅ 找到格式說明區域:', formatInfo);
+        
+        // 監控 DOM 變化
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    mutation.removedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) { // Element node
+                            if (node.classList && node.classList.contains('format-info-permanent')) {
+                                console.error('❌ 格式說明被刪除了！', node);
+                                console.trace('刪除的調用堆疊');
+                            }
+                            if (node.classList && node.classList.contains('alert')) {
+                                console.warn('⚠️ Alert 元素被刪除:', node.className);
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        
+        observer.observe(document.body, { 
+            childList: true, 
+            subtree: true 
+        });
+        
+        // 定期檢查格式說明是否還存在
+        setInterval(function() {
+            const stillExists = document.querySelector('.format-info-permanent');
+            if (!stillExists) {
+                console.error('❌ 格式說明區域消失了！時間:', new Date().toLocaleTimeString());
+            }
+        }, 2000);
+        
+    } else {
+        console.error('❌ 找不到格式說明區域');
+    }
+    
+    // 監控所有可能影響 alert 的操作
+    const originalRemove = jQuery.fn.remove;
+    jQuery.fn.remove = function() {
+        if (this.hasClass('format-info-permanent')) {
+            console.error('❌ 嘗試刪除格式說明！', this);
+            console.trace('調用堆疊');
+            return this; // 阻止刪除
+        }
+        if (this.hasClass('alert')) {
+            console.log('🗑️ 刪除 Alert 元素:', this.attr('class'));
+        }
+        return originalRemove.apply(this, arguments);
+    };
+    
+    // 監控 fadeOut 操作
+    const originalFadeOut = jQuery.fn.fadeOut;
+    jQuery.fn.fadeOut = function() {
+        if (this.hasClass('format-info-permanent')) {
+            console.error('❌ 嘗試淡出格式說明！', this);
+            console.trace('調用堆疊');
+            return this; // 阻止淡出
+        }
+        if (this.hasClass('alert')) {
+            console.log('👻 淡出 Alert 元素:', this.attr('class'));
+            console.trace('淡出調用堆疊');
+        }
+        return originalFadeOut.apply(this, arguments);
+    };
+    
+    // 監控 hide/slideUp 操作
+    const originalHide = jQuery.fn.hide;
+    jQuery.fn.hide = function() {
+        if (this.hasClass('format-info-permanent')) {
+            console.error('❌ 嘗試隱藏格式說明！', this);
+            console.trace('調用堆疊');
+            return this; // 阻止隱藏
+        }
+        if (this.hasClass('alert')) {
+            console.log('🙈 隱藏 Alert 元素:', this.attr('class'));
+            console.trace('隱藏調用堆疊');
+        }
+        return originalHide.apply(this, arguments);
+    };
+    
+    // 監控 Bootstrap 的 alert 插件
+    if ($.fn.alert && $.fn.alert.Constructor) {
+        console.log('🔄 監控 Bootstrap Alert 插件');
+        
+        const originalClose = $.fn.alert.Constructor.prototype.close;
+        $.fn.alert.Constructor.prototype.close = function(e) {
+            const $this = $(this);
+            console.log('🚪 Bootstrap Alert 關閉觸發:', $this.attr('class'));
+            
+            if ($this.hasClass('format-info-permanent')) {
+                console.error('❌ Bootstrap 嘗試關閉格式說明！');
+                console.trace('Bootstrap 關閉調用堆疊');
+                return; // 阻止關閉
+            }
+            
+            return originalClose.apply(this, arguments);
+        };
+    }
+    
+    // ===== 原有功能代碼 =====
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    
+    console.log('🎯 初始化上傳組件:', {
+        uploadArea: !!uploadArea,
+        fileInput: !!fileInput,
+        fileInfo: !!fileInfo
+    });
+    
+    // 拖放功能
+    if (uploadArea) {
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+            console.log('📂 拖放: dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            console.log('📂 拖放: dragleave');
+        });
+        
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            console.log('📂 拖放: drop');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelection(files[0]);
+            }
+        });
+    }
+    
+    // 檔案選擇處理
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            console.log('📁 檔案選擇:', e.target.files.length);
+            if (e.target.files.length > 0) {
+                handleFileSelection(e.target.files[0]);
+            }
+        });
+    }
+    
+    function handleFileSelection(file) {
+        console.log('🔍 處理檔案選擇:', file.name, file.size);
+        
+        // 檢查檔案類型
+        const allowedExtensions = ['.m4a', '.mp3', '.wav', '.flac', '.webm'];
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+        
+        if (!allowedExtensions.includes(fileExtension)) {
+            console.log('❌ 檔案格式不支援:', fileExtension);
+            showAlert('不支援的檔案格式！請選擇 M4A、MP3、WAV、FLAC 或 WebM 格式的檔案。', 'danger');
+            return;
+        }
+        
+        // 檢查檔案大小 (500MB 限制)
+        if (file.size > 500 * 1024 * 1024) {
+            console.log('❌ 檔案太大:', file.size);
+            showAlert('檔案太大！請選擇小於 500MB 的檔案。', 'danger');
+            return;
+        }
+        
+        // 顯示檔案資訊
+        if (fileName) fileName.textContent = file.name;
+        if (fileSize) fileSize.textContent = formatFileSize(file.size);
+        if (fileInfo) fileInfo.style.display = 'block';
+        
+        console.log('✅ 檔案選擇成功，隱藏進階設定');
+        // 隱藏進階設定面板，讓使用者專注於上傳
+        $('#advancedSection').slideUp();
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // 表單提交處理
+    $('#uploadForm').on('submit', function(e) {
+        e.preventDefault();
+        console.log('📤 表單提交');
+        
+        if (!fileInput || !fileInput.files[0]) {
+            console.log('❌ 沒有選擇檔案');
+            showAlert('請先選擇要上傳的檔案！', 'warning');
+            return;
+        }
+        
+        startUploadProcess();
+    });
+    
+    function startUploadProcess() {
+        console.log('🚀 開始上傳流程');
+        // 隱藏上傳區域，顯示進度
+        $('#uploadArea').slideUp();
+        $('#uploadProgress').slideDown();
+        updateProcessingSteps(1);
+        
+        const formData = new FormData(document.getElementById('uploadForm'));
+        const xhr = new XMLHttpRequest();
+        
+        xhr.open('POST', $('#uploadForm').attr('action'), true);
+        
+        // 上傳進度
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                if (progressBar) progressBar.style.width = percentComplete + '%';
+                if (progressText) progressText.textContent = `檔案上傳中... ${Math.round(percentComplete)}%`;
+            }
+        };
+        
+        // 上傳完成
+        xhr.onload = function() {
+            console.log('📤 上傳完成，狀態:', xhr.status);
+            if (progressBar) progressBar.style.width = '100%';
+            
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    console.log('📝 服務器回應:', response);
+                    if (response.status === 'success') {
+                        if (progressText) progressText.textContent = '✅ 上傳成功！後端處理中...';
+                        updateProcessingSteps(2);
+                        
+                        showAlert('🎉 檔案上傳成功！後端已開始處理，即將跳轉到結果頁面...', 'success');
+                        
+                        // 跳轉到會議詳情頁面
+                        setTimeout(() => {
+                            window.location.href = `/meetings/${response.meeting_id}`;
+                        }, 2000);
+                        
+                    } else {
+                        throw new Error(response.message || '未知的錯誤');
+                    }
+                } catch (e) {
+                    console.error('❌ 處理回應錯誤:', e);
+                    if (progressText) progressText.textContent = '❌ 處理回應失敗！';
+                    showAlert(`處理伺服器回應時發生錯誤: ${e.message}`, 'danger');
+                    resetUploadInterface();
+                }
+            } else {
+                let errorMessage = `上傳失敗: ${xhr.statusText}`;
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    if (errorResponse.message) {
+                        errorMessage = errorResponse.message;
+                    }
+                } catch (e) {}
+                console.error('❌ HTTP 錯誤:', errorMessage);
+                if (progressText) progressText.textContent = '❌ 上傳失敗！';
+                showAlert(errorMessage, 'danger');
+                resetUploadInterface();
+            }
+        };
+        
+        // 上傳出錯
+        xhr.onerror = function() {
+            console.error('❌ 網路錯誤');
+            if (progressText) progressText.textContent = '❌ 上傳時發生網路錯誤！';
+            showAlert('上傳失敗，請檢查您的網路連線。', 'danger');
+            resetUploadInterface();
+        };
+        
+        xhr.send(formData);
+    }
+    
+    function updateProcessingSteps(currentStep) {
+        console.log('📊 更新處理步驟:', currentStep);
+        const stepTexts = [
+            '檔案上傳中...',
+            '音訊預處理中...',
+            '語音轉文字中...',
+            '語者辨識中...',
+            '生成結果中...',
+            '處理完成！'
+        ];
+        
+        if (currentStep > 0 && currentStep <= stepTexts.length) {
+            if (progressText) progressText.textContent = stepTexts[currentStep - 1];
+        }
+
+        for (let i = 1; i <= 5; i++) {
+            const stepElement = document.getElementById(`step${i}`);
+            if (!stepElement) continue;
+
+            const icon = stepElement.querySelector('.step-icon i');
+            
+            if (i < currentStep) {
+                stepElement.className = 'step-card completed';
+                if (icon) icon.className = 'fa fa-check';
+            } else if (i === currentStep) {
+                stepElement.className = 'step-card active';
+                if (i === 1) {
+                    if (icon) icon.className = 'fa fa-upload';
+                } else {
+                    if (icon) icon.className = 'fa fa-cog fa-spin';
+                }
+            } else {
+                stepElement.className = 'step-card';
+                if (icon) icon.className = 'fa fa-circle-o';
+            }
+        }
+    }
+    
+    function showAlert(message, type) {
+        console.log('🚨 顯示提醒:', type, message);
+        
+        // 記錄當前所有 alert 元素
+        const existingAlerts = document.querySelectorAll('.alert');
+        console.log('📋 當前 Alert 元素:', existingAlerts.length);
+        existingAlerts.forEach((alert, index) => {
+            console.log(`  ${index}: ${alert.className}`);
+        });
+        
+        // 只移除動態生成的提醒，不影響頁面固定內容
+        const toRemove = $('.dynamic-alert, .alert-dismissible:not(.format-info-permanent)');
+        console.log('🗑️ 準備移除的 Alert:', toRemove.length);
+        toRemove.each(function(index) {
+            console.log(`  移除 ${index}: ${this.className}`);
+        });
+        toRemove.remove();
+
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade in dynamic-alert" role="alert" style="margin-top: 1rem; position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 9999; min-width: 300px; box-shadow: 0 8px 25px rgba(0,0,0,0.15); border-radius: 6px;">
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+                ${message}
+            </div>
+        `;
+        
+        $('body').prepend(alertHtml);
+        console.log('➕ 新增動態提醒');
+        
+        setTimeout(() => {
+            $('.dynamic-alert').fadeOut(function() { $(this).remove(); });
+            console.log('⏰ 自動移除動態提醒');
+        }, 5000);
+    }
+    
+    function resetUploadInterface() {
+        console.log('🔄 重置上傳介面');
+        $('#uploadProgress').slideUp();
+        $('#uploadArea').slideDown();
+        $('#advancedSection').slideDown();
+        if (fileInfo) fileInfo.style.display = 'none';
+        if (fileInput) fileInput.value = '';
+        if (progressBar) progressBar.style.width = '0%';
+        updateProcessingSteps(0);
+    }
+    
+    // 載入最近的會議記錄
+    loadRecentMeetings();
+    
+    function loadRecentMeetings() {
+        console.log('📚 載入最近會議記錄');
+        setTimeout(() => {
+            $('#recentMeetings').html(`
+                <div class="text-center" style="padding: 2rem;">
+                    <p class="text-muted" style="margin-bottom: 1rem;">尚無會議記錄</p>
+                    <a href="{{ url_for('main.meetings_list') }}" class="btn btn-info">
+                        <i class="fa fa-arrow-right"></i> 查看所有會議記錄
+                    </a>
+                </div>
+            `);
+            console.log('✅ 會議記錄載入完成');
+        }, 1500);
+    }
+    
+    // 頁面載入動畫
+    const elements = document.querySelectorAll('.fade-in');
+    elements.forEach((el, index) => {
+        el.style.animationDelay = `${index * 0.1}s`;
+    });
+    
+    console.log('🎉 頁面初始化完成');
+    
+    // 最終檢查
+    setTimeout(() => {
+        const finalCheck = document.querySelector('.format-info-permanent');
+        if (finalCheck) {
+            console.log('✅ 最終檢查：格式說明區域存在');
+        } else {
+            console.error('❌ 最終檢查：格式說明區域不存在！');
+        }
+    }, 3000);
+});
+</script>
+{% endblock %}

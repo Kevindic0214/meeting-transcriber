@@ -1,7 +1,7 @@
 __pycache__/
 *.pyc
 .env
-static/output
-static/processed
-static/uploads
+app/static/output
+app/static/processed
+app/static/uploads
 *.db

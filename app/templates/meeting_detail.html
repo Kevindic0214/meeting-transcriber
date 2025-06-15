@@ -144,6 +144,16 @@
                 <div class="clearfix"></div>
             </div>
             <div class="x_content">
+                {% if meeting.filename %}
+                <!-- 音頻播放器 -->
+                <div class="audio-player-container" style="margin-bottom: 1rem;">
+                    <audio id="audioPlayer" controls style="width: 100%;">
+                        <source src="{{ url_for('main.stream_audio', meeting_id=meeting.id) }}" type="audio/wav">
+                        您的瀏覽器不支持音頻播放。
+                    </audio>
+                </div>
+                {% endif %}
+                
                 <div class="subtitle-controls" style="margin-bottom: 1rem;">
                     <button class="btn btn-info btn-sm" onclick="toggleSubtitleMode()">
                         <i class="fa fa-user-tag"></i> <span id="modeToggleText">隱藏語者標籤</span>
@@ -376,6 +386,12 @@
 
         } else if (meetingStatus === 'completed' && document.getElementById('subtitlePreview')) {
             fetchSubtitleContent();
+            
+            // 初始化音頻播放器與字幕同步
+            const audioPlayer = document.getElementById('audioPlayer');
+            if (audioPlayer) {
+                audioPlayer.addEventListener('timeupdate', highlightCurrentSubtitle);
+            }
         }
     });
 
@@ -390,14 +406,42 @@
             })
             .then(data => {
                 const previewDiv = document.getElementById('subtitlePreview');
+                
+                // 檢查是否有字幕段落
+                if (!data.segments || data.segments.length === 0) {
+                    previewDiv.innerHTML = `
+                        <div style="text-align: center; padding: 2rem;">
+                            <i class="fa fa-info-circle" style="font-size: 2rem; color: var(--info-color); margin-bottom: 1rem;"></i>
+                            <p>此會議沒有可用的字幕內容。</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // 渲染字幕內容
                 let htmlContent = '<div class="subtitle-lines">';
                 
+                // 使用語者顏色映射來保持一致性
+                const speakerColors = {};
+                const colorClasses = ['primary-color', 'success-color', 'info-color', 'accent-color', 'warning-color'];
+                let nextColorIndex = 0;
+
                 data.segments.forEach(segment => {
+                    // 確保語者ID格式一致
+                    const speakerId = segment.speaker || "發言者未識別";
+                    
+                    // 為每個新語者分配一個顏色
+                    if (!speakerColors[speakerId]) {
+                        speakerColors[speakerId] = colorClasses[nextColorIndex % colorClasses.length];
+                        nextColorIndex++;
+                    }
+                    const speakerColor = speakerColors[speakerId];
+
                     htmlContent += `
                         <div class="subtitle-segment" data-start="${segment.start_time}">
-                            <div class="timestamp">${segment.start_time_formatted}</div>
+                            <div class="timestamp" onclick="seekToTime(${segment.start_time})" title="點擊跳轉至此時間點">${segment.start_time_formatted}</div>
                             <div class="content">
-                                <span class="speaker-tag" data-speaker="${segment.speaker}">${segment.speaker}: </span>
+                                <span class="speaker-tag" data-speaker="${speakerId}" style="color: var(--${speakerColor});">${speakerId}: </span>
                                 <span class="text">${segment.content}</span>
                             </div>
                         </div>
@@ -406,6 +450,11 @@
                 
                 htmlContent += '</div>';
                 previewDiv.innerHTML = htmlContent;
+                
+                // 初始化語者標籤顯示模式
+                if (!isSpeakerMode) {
+                    toggleSubtitleMode();
+                }
             })
             .catch(error => {
                 console.error('無法載入字幕:', error);
@@ -428,7 +477,21 @@
 
         segments.forEach(seg => {
             const speakerTag = seg.querySelector('.speaker-tag');
-            speakerTag.style.display = isSpeakerMode ? 'inline' : 'none';
+            if (speakerTag) {
+                // 使用過渡效果使切換更平滑
+                if (isSpeakerMode) {
+                    speakerTag.style.opacity = '0';
+                    speakerTag.style.display = 'inline';
+                    setTimeout(() => {
+                        speakerTag.style.opacity = '1';
+                    }, 10);
+                } else {
+                    speakerTag.style.opacity = '0';
+                    setTimeout(() => {
+                        speakerTag.style.display = 'none';
+                    }, 200);
+                }
+            }
         });
 
         buttonText.textContent = isSpeakerMode ? '隱藏語者標籤' : '顯示語者標籤';
@@ -563,5 +626,69 @@
             }
         });
     });
+
+    // 跳轉到指定時間點
+    function seekToTime(seconds) {
+        const audioPlayer = document.getElementById('audioPlayer');
+        if (audioPlayer) {
+            audioPlayer.currentTime = seconds;
+            audioPlayer.play().catch(e => console.log('播放失敗:', e));
+            
+            // 視覺反饋
+            const clickedTimestamp = event.target;
+            clickedTimestamp.style.color = 'var(--primary-color)';
+            clickedTimestamp.style.fontWeight = 'bold';
+            
+            setTimeout(() => {
+                clickedTimestamp.style.color = '';
+                clickedTimestamp.style.fontWeight = '';
+            }, 1000);
+        }
+    }
+
+    // 高亮當前播放時間對應的字幕
+    function highlightCurrentSubtitle() {
+        const audioPlayer = document.getElementById('audioPlayer');
+        if (!audioPlayer) return;
+        
+        const currentTime = audioPlayer.currentTime;
+        const segments = document.querySelectorAll('.subtitle-segment');
+        
+        // 移除所有高亮
+        segments.forEach(seg => {
+            seg.classList.remove('current-segment');
+        });
+        
+        // 找到當前時間對應的字幕段落
+        let currentSegment = null;
+        for (let i = 0; i < segments.length; i++) {
+            const startTime = parseFloat(segments[i].dataset.start);
+            const nextStartTime = i < segments.length - 1 ? parseFloat(segments[i + 1].dataset.start) : Infinity;
+            
+            if (currentTime >= startTime && currentTime < nextStartTime) {
+                currentSegment = segments[i];
+                break;
+            }
+        }
+        
+        // 高亮當前字幕段落
+        if (currentSegment) {
+            currentSegment.classList.add('current-segment');
+            
+            // 確保當前字幕在視野中
+            const subtitlePreview = document.getElementById('subtitlePreview');
+            if (subtitlePreview) {
+                const segmentTop = currentSegment.offsetTop;
+                const segmentHeight = currentSegment.offsetHeight;
+                const containerHeight = subtitlePreview.offsetHeight;
+                const scrollTop = subtitlePreview.scrollTop;
+                
+                // 如果當前字幕不在視野中，滾動到合適的位置
+                if (segmentTop < scrollTop || segmentTop + segmentHeight > scrollTop + containerHeight) {
+                    subtitlePreview.scrollTop = segmentTop - containerHeight / 2;
+                }
+            }
+        }
+    }
 </script>
 {% endblock %}

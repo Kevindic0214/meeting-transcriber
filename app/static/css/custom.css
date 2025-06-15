@@ -547,6 +547,70 @@
     margin-top: 1rem;
 }
 
+/* 字幕段落樣式 */
+.subtitle-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.subtitle-segment {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    transition: background 0.2s ease, transform 0.2s ease, border-left 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    border-left: 3px solid transparent;
+}
+
+.subtitle-segment:hover {
+    background: var(--bg-hover);
+}
+
+.subtitle-segment .timestamp {
+    min-width: 60px;
+    color: var(--text-light);
+    font-size: 0.85rem;
+    padding-top: 0.25rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.subtitle-segment .timestamp:hover {
+    color: var(--primary-color);
+    transform: scale(1.05);
+}
+
+.subtitle-segment .content {
+    flex: 1;
+    line-height: 1.6;
+}
+
+.subtitle-segment .speaker-tag {
+    font-weight: 600;
+    /* 預設顏色，會被行內樣式覆蓋 */
+    color: var(--primary-color); 
+    margin-right: 0.5rem;
+    display: inline-block;
+    transition: opacity 0.2s ease;
+    opacity: 1;
+}
+
+.subtitle-segment .text {
+    color: var(--text-primary);
+}
+
+/* 搜尋結果高亮 */
+.subtitle-segment .text mark {
+    background-color: rgba(255, 220, 40, 0.4);
+    color: inherit;
+    padding: 0.1em 0.2em;
+    border-radius: var(--radius-sm);
+}
+
 /* ==========================================================================
    表格現代化 - 增強你的現有表格
    ========================================================================== */
@@ -758,4 +822,11 @@
 .status-badge:hover {
     transform: scale(1.05);
     box-shadow: var(--shadow-md);
+}
+
+.subtitle-segment.current-segment {
+    background: var(--bg-hover);
+    border-left: 3px solid var(--primary-color);
+    transform: translateX(3px);
+    box-shadow: var(--shadow-sm);
 }

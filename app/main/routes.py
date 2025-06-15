@@ -128,6 +128,22 @@ def meeting_detail(meeting_id):
     
     return render_template('meeting_detail.html', meeting=meeting)
 
+@bp.route('/stream_audio/<meeting_id>')
+def stream_audio(meeting_id):
+    """串流處理後的音訊檔案"""
+    meeting = get_meeting_by_id(meeting_id)
+    if not meeting:
+        return "Meeting not found", 404
+        
+    # 我們假設處理後的音訊是 wav 格式
+    processed_filename = f"{meeting_id}.wav"
+    file_path = current_app.config['PROCESSED_FOLDER'] / processed_filename
+    
+    if not file_path.exists():
+        return "Processed audio file not found", 404
+        
+    return send_file(file_path, mimetype='audio/wav')
+
 @bp.route('/download/<meeting_id>/<file_type>')
 def download_file_route(meeting_id, file_type):
     """下載處理結果檔案"""

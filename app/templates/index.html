@@ -832,12 +832,10 @@ $(document).ready(function() {
                         if (progressText) progressText.textContent = '✅ 上傳成功！後端處理中...';
                         updateProcessingSteps(2);
                         
-                        showAlert('🎉 檔案上傳成功！後端已開始處理，即將跳轉到結果頁面...', 'success');
+                        showAlert('🎉 檔案上傳成功！後端正在處理中，請稍候...', 'success');
                         
-                        // 跳轉到會議詳情頁面
-                        setTimeout(() => {
-                            window.location.href = `/meetings/${response.meeting_id}`;
-                        }, 2000);
+                        // 開始監控處理進度，等待完成後再跳轉
+                        monitorProcessingProgress(response.meeting_id);
                         
                     } else {
                         throw new Error(response.message || '未知的錯誤');
@@ -895,10 +893,11 @@ $(document).ready(function() {
 
             const icon = stepElement.querySelector('.step-icon i');
             
-            if (i < currentStep) {
+            if (i < currentStep || currentStep === 6) {
+                // 如果是完成狀態（步驟6）或已完成的步驟
                 stepElement.className = 'step-card completed';
                 if (icon) icon.className = 'fa fa-check';
-            } else if (i === currentStep) {
+            } else if (i === currentStep && currentStep < 6) {
                 stepElement.className = 'step-card active';
                 if (i === 1) {
                     if (icon) icon.className = 'fa fa-upload';
@@ -909,6 +908,11 @@ $(document).ready(function() {
                 stepElement.className = 'step-card';
                 if (icon) icon.className = 'fa fa-circle-o';
             }
+        }
+        
+        // 如果是完成狀態，更新進度條為100%
+        if (currentStep === 6 && progressBar) {
+            progressBar.style.width = '100%';
         }
     }
     
@@ -957,6 +961,84 @@ $(document).ready(function() {
         if (fileInput) fileInput.value = '';
         if (progressBar) progressBar.style.width = '0%';
         updateProcessingSteps(0);
+    }
+    
+    function monitorProcessingProgress(meetingId) {
+        console.log('📊 開始監控處理進度:', meetingId);
+        
+        // 使用 Server-Sent Events 來監控處理進度
+        const eventSource = new EventSource(`/meetings/${meetingId}/stream`);
+        
+        eventSource.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                console.log('📈 收到進度更新:', data);
+                
+                // 更新進度顯示
+                if (data.step && data.message) {
+                    if (progressText) progressText.textContent = data.message;
+                    
+                    // 根據步驟更新處理階段
+                    const stepMap = {
+                        'preprocessing': 2,
+                        'transcription': 3,
+                        'diarization': 4,
+                        'merge': 5,
+                        'completed': 6
+                    };
+                    
+                    if (stepMap[data.step]) {
+                        updateProcessingSteps(stepMap[data.step]);
+                    }
+                }
+                
+                // 如果處理完成，跳轉到結果頁面
+                if (data.step === 'completed') {
+                    console.log('✅ 處理完成，準備跳轉');
+                    eventSource.close();
+                    
+                    showAlert('🎉 處理完成！即將跳轉到結果頁面...', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = `/meetings/${meetingId}`;
+                    }, 1500);
+                }
+                
+                // 如果處理失敗，顯示錯誤並重置介面
+                if (data.step === 'failed' || data.step === 'error') {
+                    console.error('❌ 處理失敗:', data.message);
+                    eventSource.close();
+                    
+                    showAlert(`處理失敗: ${data.message || '未知錯誤'}`, 'danger');
+                    resetUploadInterface();
+                }
+                
+            } catch (e) {
+                console.error('❌ 解析進度資料失敗:', e);
+            }
+        };
+        
+        eventSource.onerror = function(error) {
+            console.error('❌ 進度監控連線錯誤:', error);
+            eventSource.close();
+            
+            // 如果連線失敗，等待一段時間後跳轉（作為備用方案）
+            showAlert('⚠️ 無法監控處理進度，將在稍後跳轉到結果頁面...', 'warning');
+            
+            setTimeout(() => {
+                window.location.href = `/meetings/${meetingId}`;
+            }, 10000); // 10秒後跳轉
+        };
+        
+        // 設置超時保護（30分鐘）
+        setTimeout(() => {
+            if (eventSource.readyState !== EventSource.CLOSED) {
+                console.warn('⏰ 處理超時，強制跳轉');
+                eventSource.close();
+                showAlert('⚠️ 處理時間較長，將跳轉到結果頁面查看狀態...', 'warning');
+                window.location.href = `/meetings/${meetingId}`;
+            }
+        }, 30 * 60 * 1000); // 30分鐘超時
     }
     
     // 載入最近的會議記錄

@@ -4,6 +4,9 @@ import logging
 from flask import Flask
 from flask_moment import Moment
 from openai import OpenAI
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+import queue
 
 from config import Config
 from utils.audio_processing import AudioProcessor
@@ -13,7 +16,7 @@ moment = Moment()
 
 def create_app(config_class=Config):
     """應用程式工廠函式"""
-    app = Flask(__name__)
+    app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_class)
 
     # 設定日誌
@@ -22,6 +25,9 @@ def create_app(config_class=Config):
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     logger = logging.getLogger(__name__)
+
+    # 設置全域進度追蹤器
+    app.progress_tracker = {}
 
     # 檢查 HuggingFace Token 是否存在
     if not app.config['HF_TOKEN']:

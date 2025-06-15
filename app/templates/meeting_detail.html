@@ -288,16 +288,93 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // 檢查會議狀態，如果仍在處理中，則定期重新整理頁面
     document.addEventListener('DOMContentLoaded', function() {
         const meetingStatus = '{{ meeting.status }}';
+        
         if (meetingStatus === 'processing' || meetingStatus === 'uploaded') {
-            setTimeout(() => {
-                location.reload();
-            }, 10000); // 每 10 秒重新整理一次
-        }
+            const progressContainer = document.querySelector('.progress');
+            const progressBar = document.querySelector('.progress-bar');
+            const statusStepsContainer = document.querySelector('.processing-steps');
+            const statusBadge = document.querySelector('.status-badge');
 
-        if (meetingStatus === 'completed' && document.getElementById('subtitlePreview')) {
+            // 初始步驟定義
+            const steps = [
+                { key: 'preprocessing', text: '音訊預處理' },
+                { key: 'transcription', text: '語音轉文字進行中' },
+                { key: 'diarization', text: '語者辨識' },
+                { key: 'merge', text: '生成結果檔案' },
+                { key: 'completed', text: '完成' }
+            ];
+
+            const source = new EventSource(`/meetings/{{ meeting.id }}/stream`);
+
+            source.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                // 更新進度條
+                if (progressBar && data.progress) {
+                    progressBar.style.width = data.progress + '%';
+                }
+
+                // 更新狀態徽章和文字
+                if (statusBadge && data.message) {
+                    const icon = statusBadge.querySelector('i');
+                    if (data.step === 'failed') {
+                        statusBadge.className = 'status-badge status-failed';
+                        if (icon) icon.className = 'fa fa-times-circle';
+                        statusBadge.innerHTML = `${icon.outerHTML} 失敗`;
+                    } else if (data.progress < 100) {
+                        statusBadge.className = 'status-badge status-processing';
+                        if (icon) icon.className = 'fa fa-spinner fa-spin';
+                        statusBadge.innerHTML = `${icon.outerHTML} 處理中`;
+                    }
+                }
+                
+                // 更新處理步驟的視覺效果
+                if (statusStepsContainer && data.step) {
+                    let currentStepIndex = steps.findIndex(s => s.key === data.step);
+                    if(data.step === 'completed' || data.step === 'failed') currentStepIndex = steps.length;
+
+                    statusStepsContainer.innerHTML = ''; // 清空現有步驟
+                    steps.forEach((step, index) => {
+                        let stepClass = 'step';
+                        let iconClass = 'fa fa-circle-o';
+
+                        if (index < currentStepIndex) {
+                            stepClass += ' completed';
+                            iconClass = 'fa fa-check';
+                        } else if (index === currentStepIndex) {
+                            stepClass += ' active';
+                            iconClass = 'fa fa-cog fa-spin';
+                        }
+                        
+                        const stepElement = document.createElement('div');
+                        stepElement.className = stepClass;
+                        stepElement.innerHTML = `<i class="${iconClass}"></i> ${step.text}`;
+                        statusStepsContainer.appendChild(stepElement);
+                    });
+                }
+
+                // 處理完成或失敗
+                if (data.step === 'completed' || data.step === 'failed' || data.progress >= 100) {
+                    source.close();
+                    // 等待片刻，讓使用者看到最終狀態，然後重載頁面以顯示完整結果或錯誤訊息
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                }
+            };
+
+            source.onerror = function(err) {
+                console.error("EventSource 發生錯誤:", err);
+                source.close();
+                // 如果串流出錯，也可以考慮在短時間後重載頁面
+                setTimeout(() => {
+                    location.reload();
+                }, 5000);
+            };
+
+        } else if (meetingStatus === 'completed' && document.getElementById('subtitlePreview')) {
             fetchSubtitleContent();
         }
     });

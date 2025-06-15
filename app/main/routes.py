@@ -4,7 +4,7 @@ from threading import Thread
 from werkzeug.utils import secure_filename
 import logging
 import os
-
+import json
 from flask import (
     flash,
     redirect,
@@ -13,7 +13,8 @@ from flask import (
     send_file,
     url_for,
     current_app,
-    jsonify
+    jsonify,
+    Response
 )
 
 from app.db import add_meeting, get_all_meetings, get_meeting_by_id
@@ -83,6 +84,39 @@ def meetings_list():
     """會議列表頁面"""
     meetings = get_all_meetings()
     return render_template('meetings.html', meetings=meetings)
+
+@bp.route('/meetings/<meeting_id>/stream')
+def meeting_progress_stream(meeting_id):
+    """提供會議處理進度的 SSE 串流"""
+    def generate_progress():
+        progress_tracker = current_app.progress_tracker
+        q = progress_tracker.get(meeting_id)
+        
+        if not q:
+            # 如果處理已開始但佇列不存在，表示可能已完成或出錯
+            # 發送一個完成事件來確保前端停止輪詢
+            error_message = json.dumps({'step': 'error', 'message': '無法追蹤進度，可能處理已完成或發生錯誤。'})
+            yield f"data: {error_message}\n\n"
+            return
+
+        while True:
+            try:
+                message = q.get(timeout=30)  # 等待新訊息，設置超時以防萬一
+                if message.get('status') == 'done':
+                    break
+                
+                # 格式化為 SSE 格式
+                sse_data = f"data: {json.dumps(message)}\n\n"
+                yield sse_data
+            except Exception:
+                # 如果超時或佇列為空，跳出循環
+                break
+    
+    # 回傳一個串流回應，確保代理不會緩衝
+    response = Response(generate_progress(), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['X-Accel-Buffering'] = 'no'
+    return response
 
 @bp.route('/meetings/<meeting_id>')
 def meeting_detail(meeting_id):

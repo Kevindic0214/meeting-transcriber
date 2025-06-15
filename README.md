@@ -1,103 +1,102 @@
-# 會議轉錄助手
+# Meeting Transcriber
 
-一個結合OpenAI Whisper API的語音轉文字功能與pyannote.audio的語者分離技術的會議記錄和分析系統。
+An intelligent meeting transcription and analysis system that combines OpenAI's Whisper API for speech-to-text, Pyannote.audio for speaker diarization, and a powerful AI summarization engine.
 
-## 主要功能
+## ✨ Features
 
-- 🎙️ **語音轉文字**：使用OpenAI Whisper API進行高品質音訊轉錄
-- 👥 **語者分離**：使用pyannote.audio進行語者辨識與分離
-- 📝 **會議記錄**：自動產生帶有語者標記的詳細會議記錄
-- 📊 **網頁介面**：簡潔直觀的Flask網頁界面，方便上傳和管理會議記錄
+- 🎧 **High-Quality Transcription**: Utilizes OpenAI's `whisper-1` model for accurate audio transcription.
+- 👥 **Speaker Diarization**: Employs `pyannote/speaker-diarization-3.1` to distinguish between different speakers in the audio.
+- 📝 **AI-Powered Summaries**: Generates comprehensive meeting summaries, including a global overview, and speaker-specific highlights.
+- 💻 **Web Interface**: A clean and intuitive web UI built with Flask for easy uploading, monitoring, and management of meeting records.
+- ⏱️ **Real-Time Progress**: Track the processing status of your meetings in real-time with Server-Sent Events.
+- 💾 **Multiple Export Formats**: Download transcripts as standard `.srt`, speaker-diarization data as `.rttm`, or a combined transcript with speaker labels (`.srt`).
+- ▶️ **Audio Playback**: Listen to the processed audio directly in the browser.
 
-## 系統需求
+## ⚙️ System Requirements
 
-### 支援的音訊格式
-- WAV
-- MP3
+### Supported Audio Formats
 - M4A
-- AAC
+- MP3
+- WAV
 - FLAC
 - WEBM
 
-### 限制條件
-- 音訊檔案大小限制：500MB
-- 檔案會根據長度自動調整壓縮率以優化處理效能
-- 需要有效的OpenAI API金鑰
-- 需要有效的Hugging Face令牌
+### Prerequisites
+- **Python 3.8+**
+- **FFmpeg**: Must be installed and available in the system's PATH.
+- An active **OpenAI API Key** (or Azure OpenAI credentials).
+- An active **Hugging Face Token**.
 
-## 快速開始
+### Limitations
+- **Maximum File Size**: 500MB (configurable).
+- The application automatically compresses audio to optimize for the Whisper API's 25MB limit.
 
-### 1. 安裝依賴
+## 🚀 Quick Start
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/your-username/meeting-transcriber.git
+cd meeting-transcriber
+```
+
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 環境設置
-創建一個`.env`檔案，包含以下環境變數：
+### 3. Set Up Environment Variables
+Create a `.env` file in the project root and add the following variables:
 
 ```env
-# OpenAI API設置
-OPENAI_API_KEY=你的openai_api金鑰
+# Flask Secret Key (change this to a random string)
+SECRET_KEY='a-very-secret-key'
 
-# Hugging Face令牌
-HF_TOKEN=你的huggingface令牌
+# Hugging Face Token (for pyannote.audio)
+# Get one from https://huggingface.co/settings/tokens
+HF_TOKEN='your-hugging-face-token'
 
-# Flask設置
-SECRET_KEY=你的flask密鑰
+# --- Option 1: Standard OpenAI API ---
+OPENAI_API_KEY='your-openai-api-key'
+
+# --- Option 2: Azure OpenAI Service ---
+# Uncomment and fill these if you are using Azure
+# AZURE_OPENAI_ENDPOINT='your-azure-endpoint'
+# AZURE_OPENAI_KEY='your-azure-api-key'
+# AZURE_OPENAI_API_VERSION='2024-05-01-preview'
+# AZURE_OPENAI_MODEL='gpt-4o-mini'
 ```
+**Note**: You must accept the user agreement for the `pyannote/speaker-diarization-3.1` model on Hugging Face to use the diarization feature.
 
-### 3. 啟動應用
+### 4. Initialize the Database
+The database will be created and initialized automatically on the first run.
+
+### 5. Run the Application
 ```bash
-python app.py
+python run.py
 ```
-應用將啟動於 http://localhost:5000
+The application will be available at `http://127.0.0.1:5000`.
 
-## 功能說明
+## 🛠️ How It Works
 
-1. **上傳音訊**：支援多種音訊格式，系統會自動進行預處理和壓縮
-2. **自動轉錄**：使用OpenAI Whisper進行高精度語音轉文字
-3. **語者辨識**：使用pyannote.audio自動分辨不同發言者
-4. **會議記錄**：生成帶有時間戳和語者標記的完整會議記錄
-5. **記錄管理**：網頁界面可查看、搜索和下載所有會議記錄
+1.  **Upload**: Upload an audio file through the web interface. You can optionally specify the number of speakers.
+2.  **Processing**: A background job starts, and the UI displays the live progress.
+    - The audio is converted to a 16kHz mono WAV for diarization and compressed to an Opus `.webm` for transcription.
+    - **Transcription**: The compressed audio is sent to the Whisper API.
+    - **Diarization**: The WAV audio is processed by `pyannote.audio` to identify speaker segments.
+    - **Merging**: The transcript and speaker segments are merged to create a final, speaker-labeled SRT file.
+3.  **Review & Download**: Once complete, you can view the meeting details, play back the audio, generate an AI summary, and download the `.srt` and `.rttm` files.
 
-## 必要設置
+## 💻 Tech Stack
 
-1. **OpenAI API金鑰**
-   - 申請地址：[OpenAI Platform](https://platform.openai.com/)
-   - 注意：可能需要付費使用
+-   **Backend**: Flask (Python)
+-   **Frontend**: Vanilla JavaScript, HTML5, CSS3
+-   **Database**: SQLite
+-   **Audio Processing**: `ffmpeg`, `pydub`
+-   **Transcription**: OpenAI Whisper API
+-   **Diarization**: `pyannote.audio`
+-   **AI Summarization**: OpenAI / Azure OpenAI GPT Models
+-   **Dependencies**: `pyannote.audio`, `openai`, `python-dotenv`, `srt`, `flask`, `Flask-Moment`, `pydub`
 
-2. **Hugging Face令牌**
-   - 申請地址：[Hugging Face設置](https://huggingface.co/settings/tokens)
-   - 必須接受pyannote/speaker-diarization模型的使用條款
+## 📄 License
 
-## 技術架構
-
-- **後端**：Flask (Python)
-- **前端**：Bootstrap + jQuery
-- **資料庫**：SQLite
-- **音訊處理**：FFMPEG
-- **語音辨識**：OpenAI Whisper API
-- **語者分離**：pyannote.audio 3.1
-
-## 使用提示
-
-- 系統會根據語音片段重疊度自動分配最合適的發言者
-- 建議使用高品質的錄音設備以獲得最佳辨識結果
-- 確保API配額足夠處理大型會議錄音
-- 對於長時間會議，系統會自動調整壓縮比率以優化處理效能
-
-## 許可證
-
-Copyright 2025 AI Meeting Transcriber
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. 
+This project is licensed under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file for details. 

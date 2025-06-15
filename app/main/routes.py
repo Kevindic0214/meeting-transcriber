@@ -17,8 +17,9 @@ from flask import (
     Response
 )
 
-from app.db import add_meeting, get_all_meetings, get_meeting_by_id
+from app.db import add_meeting, get_all_meetings, get_meeting_by_id, delete_meeting_by_id
 from app.services.processing import process_meeting
+from utils.transcription_processor import process_transcription
 from . import bp
 
 logger = logging.getLogger(__name__)
@@ -121,10 +122,11 @@ def meetings_list():
 @bp.route('/meetings/<meeting_id>/stream')
 def meeting_progress_stream(meeting_id):
     """提供會議處理進度的 SSE 串流"""
+    # 在路由函數中獲取 progress_tracker，而不是在生成器中
+    progress_tracker = current_app.progress_tracker
+    q = progress_tracker.get(meeting_id)
+    
     def generate_progress():
-        progress_tracker = current_app.progress_tracker
-        q = progress_tracker.get(meeting_id)
-        
         if not q:
             # 如果處理已開始但佇列不存在，表示可能已完成或出錯
             # 發送一個完成事件來確保前端停止輪詢
@@ -209,3 +211,159 @@ def download_file_route(meeting_id, file_type):
     download_name = f"{original_name}{extension_map[file_type]}"
     
     return send_file(file_path, as_attachment=True, download_name=download_name)
+
+@bp.route('/api/meetings/<meeting_id>/generate-summary', methods=['POST'])
+def generate_meeting_summary(meeting_id):
+    """生成會議摘要的 API"""
+    try:
+        meeting = get_meeting_by_id(meeting_id)
+        if not meeting:
+            return jsonify({'status': 'error', 'message': '找不到指定的會議記錄'}), 404
+        
+        if meeting['status'] != 'completed':
+            return jsonify({'status': 'error', 'message': '會議尚未處理完成'}), 400
+        
+        # 讀取語者標註字幕檔案
+        if not meeting['speaker_srt_path']:
+            return jsonify({'status': 'error', 'message': '找不到會議逐字稿'}), 404
+            
+        srt_file_path = current_app.config['BASE_DIR'] / meeting['speaker_srt_path']
+        if not srt_file_path.exists():
+            return jsonify({'status': 'error', 'message': '逐字稿檔案不存在'}), 404
+        
+        # 讀取 SRT 檔案並轉換為純文字格式
+        with open(srt_file_path, 'r', encoding='utf-8') as f:
+            srt_content = f.read()
+        
+        # 解析 SRT 格式，提取發言內容
+        transcription_text = parse_srt_to_transcription(srt_content)
+        
+        if not transcription_text.strip():
+            return jsonify({'status': 'error', 'message': '無法解析逐字稿內容'}), 400
+        
+        # 使用 AI 處理逐字稿
+        logger.info(f"開始為會議 {meeting_id} 生成 AI 摘要")
+        global_summary, chunk_summaries, speaker_highlights = process_transcription(transcription_text)
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'global_summary': global_summary,
+                'chunk_summaries': chunk_summaries,
+                'speaker_highlights': speaker_highlights
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"生成會議摘要時發生錯誤: {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': '生成摘要時發生錯誤，請稍後再試'}), 500
+
+def parse_srt_to_transcription(srt_content):
+    """將 SRT 格式轉換為逐字稿格式"""
+    lines = srt_content.strip().split('\n')
+    transcription_lines = []
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        
+        # 跳過序號行
+        if line.isdigit():
+            i += 1
+            continue
+            
+        # 跳過時間戳行
+        if '-->' in line:
+            i += 1
+            continue
+            
+        # 跳過空行
+        if not line:
+            i += 1
+            continue
+            
+        # 這是字幕內容行
+        transcription_lines.append(line)
+        i += 1
+    
+    return '\n'.join(transcription_lines)
+
+@bp.route('/api/meetings/<meeting_id>/transcription')
+def get_meeting_transcription(meeting_id):
+    """獲取會議逐字稿的 API"""
+    try:
+        meeting = get_meeting_by_id(meeting_id)
+        if not meeting:
+            return jsonify({'status': 'error', 'message': '找不到指定的會議記錄'}), 404
+        
+        if meeting['status'] != 'completed' or not meeting['speaker_srt_path']:
+            return jsonify({'status': 'error', 'message': '會議逐字稿尚未生成'}), 400
+            
+        srt_file_path = current_app.config['BASE_DIR'] / meeting['speaker_srt_path']
+        if not srt_file_path.exists():
+            return jsonify({'status': 'error', 'message': '逐字稿檔案不存在'}), 404
+        
+        with open(srt_file_path, 'r', encoding='utf-8') as f:
+            srt_content = f.read()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'srt_content': srt_content,
+                'transcription_text': parse_srt_to_transcription(srt_content)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"獲取會議逐字稿時發生錯誤: {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': '獲取逐字稿時發生錯誤'}), 500
+
+@bp.route('/api/meeting/<meeting_id>/delete', methods=['DELETE'])
+def delete_meeting(meeting_id):
+    """刪除會議記錄的 API"""
+    try:
+        meeting = get_meeting_by_id(meeting_id)
+        if not meeting:
+            return jsonify({'status': 'error', 'message': '找不到指定的會議記錄'}), 404
+        
+        # 刪除相關檔案
+        config = current_app.config
+        files_to_delete = []
+        
+        # 收集需要刪除的檔案路徑
+        if meeting['filename']:
+            files_to_delete.append(config['UPLOADS_FOLDER'] / meeting['filename'])
+        if meeting['srt_path']:
+            files_to_delete.append(config['BASE_DIR'] / meeting['srt_path'])
+        if meeting['speaker_srt_path']:
+            files_to_delete.append(config['BASE_DIR'] / meeting['speaker_srt_path'])
+        if meeting['rttm_path']:
+            files_to_delete.append(config['BASE_DIR'] / meeting['rttm_path'])
+        
+        # 處理後的音訊檔案
+        processed_filename = f"{meeting_id}.wav"
+        processed_file_path = config['PROCESSED_FOLDER'] / processed_filename
+        if processed_file_path.exists():
+            files_to_delete.append(processed_file_path)
+        
+        # 刪除檔案
+        for file_path in files_to_delete:
+            try:
+                if file_path.exists():
+                    file_path.unlink()
+                    logger.info(f"已刪除檔案: {file_path}")
+            except Exception as e:
+                logger.warning(f"刪除檔案失敗 {file_path}: {e}")
+        
+        # 從資料庫中刪除記錄
+        success = delete_meeting_by_id(meeting_id)
+        
+        if success:
+            logger.info(f"已成功刪除會議記錄: {meeting_id}")
+            return jsonify({'status': 'success', 'message': '會議記錄已成功刪除'})
+        else:
+            return jsonify({'status': 'error', 'message': '刪除會議記錄時發生錯誤'}), 500
+            
+    except Exception as e:
+        logger.error(f"刪除會議記錄時發生錯誤: {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': '刪除會議記錄時發生錯誤'}), 500

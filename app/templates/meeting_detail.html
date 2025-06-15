@@ -189,54 +189,97 @@
             </div>
         </div>
 
-        <!-- 會議摘要 -->
+        <!-- AI 會議摘要 -->
         <div class="x_panel fade-in">
             <div class="x_title">
                 <h2><i class="fa fa-lightbulb"></i> AI 會議摘要</h2>
                 <div class="clearfix"></div>
             </div>
             <div class="x_content">
-                <div style="background: linear-gradient(135deg, var(--bg-secondary), var(--bg-accent)); padding: 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
-                    <h3 style="color: var(--primary-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fa fa-list-alt"></i> 主要討論點
-                    </h3>
-                    <ul style="margin-bottom: 2rem; padding-left: 1.5rem; line-height: 1.8; color: var(--text-primary);">
-                        <li>產品開發策略與市場定位討論</li>
-                        <li>技術架構優化方案評估</li>
-                        <li>團隊資源配置與時程安排</li>
-                        <li>用戶反饋分析與改進方向</li>
-                    </ul>
+                <div id="summaryContainer">
+                    <!-- 生成摘要按鈕 -->
+                    <div id="generateSummarySection" style="text-align: center; padding: 3rem 2rem;">
+                        <div style="margin-bottom: 2rem;">
+                            <i class="fa fa-magic" style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+                            <h3 style="color: var(--text-primary); margin-bottom: 1rem;">使用 AI 生成會議摘要</h3>
+                            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                                點擊下方按鈕，AI 將分析會議內容並生成：<br>
+                                • 全局會議摘要<br>
+                                • 各發言人重點整理<br>
+                                • 分段內容摘要
+                            </p>
+                        </div>
+                        <button id="generateSummaryBtn" class="btn btn-primary btn-lg" onclick="generateSummary()">
+                            <i class="fa fa-cog"></i> 生成 AI 摘要
+                        </button>
+                    </div>
                     
-                    <h3 style="color: var(--success-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fa fa-check-square"></i> 決議事項
-                    </h3>
-                    <ul style="margin-bottom: 2rem; padding-left: 1.5rem; line-height: 1.8; color: var(--text-primary);">
-                        <li>確認下季度產品路線圖</li>
-                        <li>批准技術債務清理計劃</li>
-                        <li>同意增加前端開發人力</li>
-                        <li>設定用戶體驗改善目標</li>
-                    </ul>
+                    <!-- 載入中狀態 -->
+                    <div id="summaryLoadingSection" style="display: none; text-align: center; padding: 3rem 2rem;">
+                        <div style="margin-bottom: 2rem;">
+                            <i class="fa fa-spinner fa-spin" style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+                            <h3 style="color: var(--text-primary); margin-bottom: 1rem;">AI 正在分析會議內容</h3>
+                            <p style="color: var(--text-secondary);">
+                                請稍候，這可能需要幾分鐘時間...
+                            </p>
+                        </div>
+                        <div class="progress progress-striped active" style="max-width: 400px; margin: 0 auto;">
+                            <div class="progress-bar progress-bar-primary" style="width: 100%"></div>
+                        </div>
+                    </div>
                     
-                    <h3 style="color: var(--warning-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fa fa-tasks"></i> 行動項目
-                    </h3>
-                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: var(--radius-md); border-left: 4px solid var(--warning-color);">
-                        <div style="margin-bottom: 1rem;">
-                            <strong style="color: var(--text-primary);">發言者A：</strong>
-                            <span style="color: var(--text-secondary);">完成市場調研報告，截止日期：下週五</span>
+                    <!-- 摘要結果 -->
+                    <div id="summaryResultSection" style="display: none;">
+                        <!-- 全局摘要 -->
+                        <div style="background: linear-gradient(135deg, var(--bg-secondary), var(--bg-accent)); padding: 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+                            <h3 style="color: var(--primary-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa fa-file-text"></i> 會議總結
+                            </h3>
+                            <div id="globalSummaryContent" style="line-height: 1.8; color: var(--text-primary); font-size: 1.1rem;">
+                                <!-- 動態內容 -->
+                            </div>
                         </div>
-                        <div style="margin-bottom: 1rem;">
-                            <strong style="color: var(--text-primary);">發言者B：</strong>
-                            <span style="color: var(--text-secondary);">技術架構文檔更新，截止日期：本週三</span>
+                        
+                        <!-- 發言人重點 -->
+                        <div style="background: var(--bg-primary); padding: 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+                            <h3 style="color: var(--success-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa fa-users"></i> 發言人重點
+                            </h3>
+                            <div id="speakerHighlightsContent">
+                                <!-- 動態內容 -->
+                            </div>
                         </div>
-                        <div style="margin-bottom: 1rem;">
-                            <strong style="color: var(--text-primary);">發言者C：</strong>
-                            <span style="color: var(--text-secondary);">招聘計劃制定，截止日期：下週一</span>
+                        
+                        <!-- 分段摘要 -->
+                        <div style="background: var(--bg-secondary); padding: 2rem; border-radius: var(--radius-lg);">
+                            <h3 style="color: var(--info-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa fa-list"></i> 分段摘要
+                            </h3>
+                            <div id="chunkSummariesContent">
+                                <!-- 動態內容 -->
+                            </div>
                         </div>
-                        <div>
-                            <strong style="color: var(--text-primary);">發言者D：</strong>
-                            <span style="color: var(--text-secondary);">用戶訪談安排，截止日期：下週三</span>
+                        
+                        <!-- 重新生成按鈕 -->
+                        <div style="text-align: center; margin-top: 2rem;">
+                            <button class="btn btn-outline-primary" onclick="generateSummary()">
+                                <i class="fa fa-refresh"></i> 重新生成摘要
+                            </button>
                         </div>
+                    </div>
+                    
+                    <!-- 錯誤狀態 -->
+                    <div id="summaryErrorSection" style="display: none; text-align: center; padding: 3rem 2rem;">
+                        <div style="margin-bottom: 2rem;">
+                            <i class="fa fa-exclamation-triangle" style="font-size: 3rem; color: var(--danger-color); margin-bottom: 1rem;"></i>
+                            <h3 style="color: var(--text-primary); margin-bottom: 1rem;">生成摘要失敗</h3>
+                            <p id="summaryErrorMessage" style="color: var(--text-secondary); margin-bottom: 2rem;">
+                                <!-- 錯誤訊息 -->
+                            </p>
+                        </div>
+                        <button class="btn btn-primary" onclick="generateSummary()">
+                            <i class="fa fa-retry"></i> 重試
+                        </button>
                     </div>
                 </div>
             </div>
@@ -267,6 +310,16 @@
                 </div>
             </a>
             
+            <button class="quick-action-item" onclick="generateSummary()">
+                <div class="action-icon">
+                    <i class="fa fa-magic"></i>
+                </div>
+                <div class="action-content">
+                    <div class="action-title">生成 AI 摘要</div>
+                    <small class="action-desc">使用 AI 分析會議內容並生成摘要</small>
+                </div>
+            </button>
+
             <button class="quick-action-item" onclick="shareResults()">
                 <div class="action-icon">
                     <i class="fa fa-share"></i>
@@ -701,6 +754,116 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+
+    // AI 摘要相關函數
+    function generateSummary() {
+        // 顯示載入狀態
+        showSummarySection('loading');
+        
+        // 發送 API 請求
+        fetch(`/api/meetings/{{ meeting.id }}/generate-summary`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                displaySummaryResults(data.data);
+            } else {
+                showSummaryError(data.message || '生成摘要時發生未知錯誤');
+            }
+        })
+        .catch(error => {
+            console.error('生成摘要時發生錯誤:', error);
+            showSummaryError('網路連線錯誤，請檢查您的網路連線後重試');
+        });
+    }
+
+    function showSummarySection(section) {
+        // 隱藏所有區塊
+        document.getElementById('generateSummarySection').style.display = 'none';
+        document.getElementById('summaryLoadingSection').style.display = 'none';
+        document.getElementById('summaryResultSection').style.display = 'none';
+        document.getElementById('summaryErrorSection').style.display = 'none';
+        
+        // 顯示指定區塊
+        switch(section) {
+            case 'generate':
+                document.getElementById('generateSummarySection').style.display = 'block';
+                break;
+            case 'loading':
+                document.getElementById('summaryLoadingSection').style.display = 'block';
+                break;
+            case 'result':
+                document.getElementById('summaryResultSection').style.display = 'block';
+                break;
+            case 'error':
+                document.getElementById('summaryErrorSection').style.display = 'block';
+                break;
+        }
+    }
+
+    function displaySummaryResults(data) {
+        // 顯示全局摘要
+        const globalSummaryContent = document.getElementById('globalSummaryContent');
+        globalSummaryContent.innerHTML = `<p>${data.global_summary}</p>`;
+        
+        // 顯示發言人重點
+        const speakerHighlightsContent = document.getElementById('speakerHighlightsContent');
+        if (data.speaker_highlights && data.speaker_highlights.length > 0) {
+            let highlightsHtml = '';
+            data.speaker_highlights.forEach(highlight => {
+                highlightsHtml += `
+                    <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: var(--radius-md); margin-bottom: 1rem; border-left: 4px solid var(--success-color);">
+                        <div style="line-height: 1.6; color: var(--text-primary);">${highlight}</div>
+                    </div>
+                `;
+            });
+            speakerHighlightsContent.innerHTML = highlightsHtml;
+        } else {
+            speakerHighlightsContent.innerHTML = '<p style="color: var(--text-secondary);">未找到發言人重點資訊</p>';
+        }
+        
+        // 顯示分段摘要
+        const chunkSummariesContent = document.getElementById('chunkSummariesContent');
+        if (data.chunk_summaries) {
+            const summaries = data.chunk_summaries.split('\n').filter(line => line.trim());
+            let chunkHtml = '';
+            summaries.forEach((summary, index) => {
+                const cleanSummary = summary.replace(/^-\s*/, ''); // 移除開頭的 "- "
+                chunkHtml += `
+                    <div style="background: var(--bg-primary); padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 0.5rem; border-left: 3px solid var(--info-color);">
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                            <i class="fa fa-clock"></i> 片段 ${index + 1}
+                        </div>
+                        <div style="color: var(--text-primary); line-height: 1.5;">${cleanSummary}</div>
+                    </div>
+                `;
+            });
+            chunkSummariesContent.innerHTML = chunkHtml;
+        } else {
+            chunkSummariesContent.innerHTML = '<p style="color: var(--text-secondary);">未找到分段摘要資訊</p>';
+        }
+        
+        // 顯示結果區塊
+        showSummarySection('result');
+        
+        // 顯示成功提示
+        Swal.fire({
+            icon: 'success',
+            title: 'AI 摘要生成完成！',
+            text: '會議內容已成功分析並生成摘要',
+            timer: 3000,
+            showConfirmButton: false
+        });
+    }
+
+    function showSummaryError(message) {
+        document.getElementById('summaryErrorMessage').textContent = message;
+        showSummarySection('error');
     }
     
     // 刪除按鈕的事件監聽

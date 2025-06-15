@@ -128,8 +128,9 @@ def delete_meeting_by_id(meeting_id):
     """透過 ID 從資料庫刪除一筆會議記錄。"""
     sql = 'DELETE FROM meetings WHERE id = ?'
     conn = get_db()
-    conn.execute(sql, (meeting_id,))
+    cursor = conn.execute(sql, (meeting_id,))
     conn.commit()
+    return cursor.rowcount > 0  # 返回是否成功刪除
 
 def init_app(app):
     """

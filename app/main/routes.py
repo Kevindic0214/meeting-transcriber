@@ -28,6 +28,39 @@ def index():
     """首頁 - 顯示上傳介面"""
     return render_template('index.html')
 
+@bp.route('/api/recent-meetings')
+def get_recent_meetings():
+    """API: 獲取最近的會議記錄（用於首頁顯示）"""
+    try:
+        # 獲取最近5筆會議記錄
+        all_meetings = get_all_meetings()
+        recent_meetings = all_meetings[:5] if all_meetings else []
+        
+        # 格式化回傳資料
+        formatted_meetings = []
+        for meeting in recent_meetings:
+            formatted_meeting = {
+                'id': meeting['id'],
+                'original_filename': meeting['original_filename'],
+                'status': meeting['status'],
+                'created_at': meeting['created_at'],
+                'duration': meeting['duration'],
+                'num_speakers': meeting['num_speakers']
+            }
+            formatted_meetings.append(formatted_meeting)
+        
+        return jsonify({
+            'status': 'success',
+            'meetings': formatted_meetings,
+            'total_count': len(all_meetings) if all_meetings else 0
+        })
+    except Exception as e:
+        logger.error(f"獲取最近會議記錄時發生錯誤: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': '獲取會議記錄失敗'
+        }), 500
+
 @bp.route('/upload', methods=['POST'])
 def upload_file():
     """處理檔案上傳"""

@@ -221,7 +221,7 @@
                 </ul>
                 <div class="clearfix"></div>
             </div>
-            <div class="x_content" style="display: none;">
+            <div class="x_content">
                 <div id="recentMeetings">
                     <div class="text-center" style="padding: 2rem;">
                         <i class="fa fa-spinner fa-spin fa-2x text-primary"></i>
@@ -964,17 +964,152 @@ $(document).ready(function() {
     
     function loadRecentMeetings() {
         console.log('📚 載入最近會議記錄');
-        setTimeout(() => {
-            $('#recentMeetings').html(`
-                <div class="text-center" style="padding: 2rem;">
-                    <p class="text-muted" style="margin-bottom: 1rem;">尚無會議記錄</p>
-                    <a href="{{ url_for('main.meetings_list') }}" class="btn btn-info">
-                        <i class="fa fa-arrow-right"></i> 查看所有會議記錄
-                    </a>
-                </div>
-            `);
-            console.log('✅ 會議記錄載入完成');
-        }, 1500);
+        
+        // 發送AJAX請求獲取最近的會議記錄
+        $.ajax({
+            url: '{{ url_for("main.get_recent_meetings") }}',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                console.log('📝 獲取會議記錄回應:', response);
+                
+                if (response.status === 'success' && response.meetings && response.meetings.length > 0) {
+                    // 有會議記錄，顯示列表
+                    let meetingsHtml = '<div class="recent-meetings-list">';
+                    
+                    response.meetings.forEach(function(meeting, index) {
+                        const statusIcon = getStatusIcon(meeting.status);
+                        const statusText = getStatusText(meeting.status);
+                        const duration = meeting.duration ? `${(meeting.duration/60).toFixed(1)} 分鐘` : '-';
+                        const speakers = meeting.num_speakers ? `${meeting.num_speakers} 位發言者` : '-';
+                        const createdAt = formatDateTime(meeting.created_at);
+                        
+                        meetingsHtml += `
+                            <div class="recent-meeting-item" style="animation-delay: ${index * 0.1}s;">
+                                <div class="meeting-header">
+                                    <div class="meeting-title">
+                                        <i class="fa fa-file-audio-o"></i>
+                                        <span class="filename">${meeting.original_filename}</span>
+                                    </div>
+                                    <div class="meeting-status status-${meeting.status}">
+                                        ${statusIcon} ${statusText}
+                                    </div>
+                                </div>
+                                <div class="meeting-meta">
+                                    <span><i class="fa fa-calendar"></i> ${createdAt}</span>
+                                    <span><i class="fa fa-clock"></i> ${duration}</span>
+                                    <span><i class="fa fa-users"></i> ${speakers}</span>
+                                </div>
+                                <div class="meeting-actions">
+                                    <a href="/meetings/${meeting.id}" class="btn btn-sm btn-info">
+                                        <i class="fa fa-eye"></i> 查看詳情
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    meetingsHtml += '</div>';
+                    
+                    // 如果有更多會議記錄，顯示查看全部按鈕
+                    if (response.total_count > response.meetings.length) {
+                        meetingsHtml += `
+                            <div class="text-center" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #eee;">
+                                <p class="text-muted" style="margin-bottom: 1rem;">
+                                    還有 ${response.total_count - response.meetings.length} 筆會議記錄
+                                </p>
+                                <a href="{{ url_for('main.meetings_list') }}" class="btn btn-info">
+                                    <i class="fa fa-list"></i> 查看所有會議記錄
+                                </a>
+                            </div>
+                        `;
+                    }
+                    
+                    $('#recentMeetings').html(meetingsHtml);
+                } else {
+                    // 沒有會議記錄
+                    $('#recentMeetings').html(`
+                        <div class="text-center" style="padding: 2rem;">
+                            <i class="fa fa-inbox" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
+                            <p class="text-muted" style="margin-bottom: 1rem;">尚無會議記錄</p>
+                            <a href="{{ url_for('main.meetings_list') }}" class="btn btn-info">
+                                <i class="fa fa-arrow-right"></i> 查看所有會議記錄
+                            </a>
+                        </div>
+                    `);
+                }
+                
+                console.log('✅ 會議記錄載入完成');
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ 載入會議記錄失敗:', error);
+                $('#recentMeetings').html(`
+                    <div class="text-center" style="padding: 2rem;">
+                        <i class="fa fa-exclamation-triangle" style="font-size: 2rem; color: #f39c12; margin-bottom: 1rem;"></i>
+                        <p class="text-muted" style="margin-bottom: 1rem;">載入會議記錄失敗</p>
+                        <button class="btn btn-warning btn-sm" onclick="loadRecentMeetings()">
+                            <i class="fa fa-refresh"></i> 重新載入
+                        </button>
+                    </div>
+                `);
+            }
+        });
+    }
+    
+    // 輔助函數：獲取狀態圖示
+    function getStatusIcon(status) {
+        const icons = {
+            'uploaded': '<i class="fa fa-clock"></i>',
+            'processing': '<i class="fa fa-spinner fa-spin"></i>',
+            'completed': '<i class="fa fa-check-circle"></i>',
+            'failed': '<i class="fa fa-times-circle"></i>'
+        };
+        return icons[status] || '<i class="fa fa-question-circle"></i>';
+    }
+    
+    // 輔助函數：獲取狀態文字
+    function getStatusText(status) {
+        const texts = {
+            'uploaded': '已上傳',
+            'processing': '處理中',
+            'completed': '已完成',
+            'failed': '失敗'
+        };
+        return texts[status] || '未知';
+    }
+    
+    // 輔助函數：格式化日期時間
+    function formatDateTime(dateTimeStr) {
+        if (!dateTimeStr) return '-';
+        
+        try {
+            const date = new Date(dateTimeStr);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / (1000 * 60));
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            
+            if (diffMins < 1) {
+                return '剛剛';
+            } else if (diffMins < 60) {
+                return `${diffMins} 分鐘前`;
+            } else if (diffHours < 24) {
+                return `${diffHours} 小時前`;
+            } else if (diffDays < 7) {
+                return `${diffDays} 天前`;
+            } else {
+                return date.toLocaleDateString('zh-TW', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+        } catch (e) {
+            console.error('日期格式化錯誤:', e);
+            return dateTimeStr;
+        }
     }
     
     // 頁面載入動畫

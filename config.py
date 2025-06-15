@@ -20,6 +20,12 @@ class Config:
     # HuggingFace API Token
     HF_TOKEN = os.getenv("HF_TOKEN")
 
+    # Azure OpenAI 設定
+    AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+    AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
+    AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-05-01-preview")
+    AZURE_OPENAI_MODEL = os.getenv("AZURE_OPENAI_MODEL", "gpt-4o-mini")
+
     # 資料庫檔案路徑
     DB_PATH = BASE_DIR / "meeting_assistant.db"
 

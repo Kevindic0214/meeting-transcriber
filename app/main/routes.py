@@ -122,30 +122,46 @@ def meetings_list():
 @bp.route('/meetings/<meeting_id>/stream')
 def meeting_progress_stream(meeting_id):
     """提供會議處理進度的 SSE 串流"""
+    logger.info(f"SSE: Client connected for meeting_id: {meeting_id}")
     # 在路由函數中獲取 progress_tracker，而不是在生成器中
     progress_tracker = current_app.progress_tracker
     q = progress_tracker.get(meeting_id)
     
     def generate_progress():
+        logger.info(f"SSE - {meeting_id}: Starting progress generator.")
         if not q:
+            logger.warning(f"SSE - {meeting_id}: No progress queue found. Sending error message.")
             # 如果處理已開始但佇列不存在，表示可能已完成或出錯
             # 發送一個完成事件來確保前端停止輪詢
-            error_message = json.dumps({'step': 'error', 'message': '無法追蹤進度，可能處理已完成或發生錯誤。'})
+            error_message = json.dumps({'step': 'error', 'message': '無法追蹤進度，處理程序可能未正確啟動或已結束。'})
             yield f"data: {error_message}\n\n"
             return
 
-        while True:
-            try:
-                message = q.get(timeout=30)  # 等待新訊息，設置超時以防萬一
-                if message.get('status') == 'done':
+        client_connected = True
+        try:
+            while client_connected:
+                try:
+                    message = q.get(timeout=30)  # 等待新訊息，設置超時以防萬一
+                    logger.info(f"SSE - {meeting_id}: Got message from queue: {message}")
+
+                    if message.get('status') == 'done':
+                        logger.info(f"SSE - {meeting_id}: 'done' message received. Breaking loop.")
+                        break
+                    
+                    # 格式化為 SSE 格式
+                    sse_data = f"data: {json.dumps(message)}\n\n"
+                    logger.info(f"SSE - {meeting_id}: Sending data to client: {sse_data.strip()}")
+                    yield sse_data
+                except Exception as e:
+                    # 如果超時或佇列為空，跳出循環
+                    logger.info(f"SSE - {meeting_id}: Queue timeout or empty. Breaking loop. Exception: {e}")
                     break
-                
-                # 格式化為 SSE 格式
-                sse_data = f"data: {json.dumps(message)}\n\n"
-                yield sse_data
-            except Exception:
-                # 如果超時或佇列為空，跳出循環
-                break
+        except GeneratorExit:
+            # This exception is raised when the client disconnects
+            client_connected = False
+            logger.info(f"SSE - {meeting_id}: Client disconnected. Closing generator.")
+        finally:
+            logger.info(f"SSE - {meeting_id}: Progress generator finished.")
     
     # 回傳一個串流回應，確保代理不會緩衝
     response = Response(generate_progress(), mimetype='text/event-stream')

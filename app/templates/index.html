@@ -964,15 +964,20 @@ $(document).ready(function() {
     }
     
     function monitorProcessingProgress(meetingId) {
-        console.log('📊 開始監控處理進度:', meetingId);
+        console.log(`[SSE-Debug] 開始監控處理進度，Meeting ID: ${meetingId}`);
         
         // 使用 Server-Sent Events 來監控處理進度
         const eventSource = new EventSource(`/meetings/${meetingId}/stream`);
+
+        eventSource.onopen = function(event) {
+            console.log("[SSE-Debug] ✅ 連線已成功建立 (onopen).", event);
+        };
         
         eventSource.onmessage = function(event) {
             try {
+                console.log("[SSE-Debug] 📩 收到原始訊息 (raw):", event.data);
                 const data = JSON.parse(event.data);
-                console.log('📈 收到進度更新:', data);
+                console.log('[SSE-Debug] 📈 解析後的進度更新:', data);
                 
                 // 更新進度顯示
                 if (data.step && data.message) {
@@ -994,7 +999,7 @@ $(document).ready(function() {
                 
                 // 如果處理完成，跳轉到結果頁面
                 if (data.step === 'completed') {
-                    console.log('✅ 處理完成，準備跳轉');
+                    console.log('[SSE-Debug] ✅ 處理完成，關閉 SSE 連線並準備跳轉');
                     eventSource.close();
                     
                     showAlert('🎉 處理完成！即將跳轉到結果頁面...', 'success');
@@ -1006,7 +1011,7 @@ $(document).ready(function() {
                 
                 // 如果處理失敗，顯示錯誤並重置介面
                 if (data.step === 'failed' || data.step === 'error') {
-                    console.error('❌ 處理失敗:', data.message);
+                    console.error('[SSE-Debug] ❌ 處理失敗，關閉 SSE 連線:', data.message);
                     eventSource.close();
                     
                     showAlert(`處理失敗: ${data.message || '未知錯誤'}`, 'danger');
@@ -1014,13 +1019,22 @@ $(document).ready(function() {
                 }
                 
             } catch (e) {
-                console.error('❌ 解析進度資料失敗:', e);
+                console.error('[SSE-Debug] ❌ 解析進度資料失敗:', e, "收到的資料:", event.data);
             }
         };
         
         eventSource.onerror = function(error) {
-            console.error('❌ 進度監控連線錯誤:', error);
+            console.error('[SSE-Debug] ❌ 進度監控連線錯誤 (onerror):', error);
+            
+            const readyStateMap = {
+                0: 'CONNECTING',
+                1: 'OPEN',
+                2: 'CLOSED'
+            };
+            console.log(`[SSE-Debug] 目前連線狀態: ${readyStateMap[eventSource.readyState] || 'UNKNOWN'}`);
+
             eventSource.close();
+            console.log("[SSE-Debug] 已在 onerror 事件中呼叫 eventSource.close()");
             
             // 如果連線失敗，等待一段時間後跳轉（作為備用方案）
             showAlert('⚠️ 無法監控處理進度，將在稍後跳轉到結果頁面...', 'warning');

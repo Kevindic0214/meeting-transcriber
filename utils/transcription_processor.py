@@ -38,11 +38,11 @@ def _get_llm_response(prompt: str, model: str = Config.AZURE_OPENAI_MODEL) -> st
                 {"role": "system", "content": "You are a helpful assistant specialized in summarizing and analyzing meeting transcripts."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7,
+            temperature=0.3,
             max_tokens=1024,
             top_p=0.95,
-            frequency_penalty=0,
-            presence_penalty=0
+            frequency_penalty=0.2,
+            presence_penalty=0.1
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
@@ -101,7 +101,7 @@ def _generate_global_summary(chunk_summaries: list[str]) -> str:
     """
     print("Generating global summary...")
     combined_summaries = "\n".join(chunk_summaries)
-    prompt = f"以下是多段會議片段的摘要，請將它們整理成一段流暢且完整的會議摘要，內容需涵蓋所有重點，並限制在500字以內：\n\n---\n{combined_summaries}\n---"
+    prompt = f"以下是多段會議片段的摘要，請將它們整理成一段流暢且完整的會議摘要，內容需涵蓋所有重點，並限制在300字以內：\n\n---\n{combined_summaries}\n---"
     
     return _get_llm_response(prompt)
 
@@ -119,19 +119,21 @@ def _generate_speaker_highlights(transcription: str) -> list[str]:
     lines = transcription.strip().split('\n')
     speaker_dialogue = defaultdict(list)
 
-    # 使用正則表達式解析 "發言人XX："
-    speaker_pattern = re.compile(r"^(.*?：)")
+    # 使用正則表達式解析 "[發言者XX]："
+    speaker_pattern = re.compile(r"^\[(.*?)\]\s*[:：]")
 
     for line in lines:
         match = speaker_pattern.match(line)
         if match:
-            speaker = match.group(1).strip()
+            # speaker現在是group(1)，也就是方括號內的內容
+            speaker = match.group(1).strip() + "：" # 統一加上全形冒號以便後續處理
             content = line[len(match.group(0)):].strip()
             speaker_dialogue[speaker].append(content)
         else:
             # 如果某一行沒有發言人標籤，可以將其歸類或忽略
             # 這裡我們暫時忽略
             pass
+
 
     speaker_highlights = []
     
@@ -140,15 +142,19 @@ def _generate_speaker_highlights(transcription: str) -> list[str]:
         full_dialogue = "\n".join(dialogues)
         # 移除冒號以符合 prompt 格式要求
         speaker_name = speaker.replace('：', '')
-        prompt = f"這是發言人「{speaker_name}」在會議中的所有發言內容，請從中整理出 3-5 條最重要的發言重點。請嚴格按照以下格式輸出，每個重點以分號分隔：\n- {speaker_name}：重點1；重點2；重點3\n\n---\n{full_dialogue}\n---"
+        prompt = f"這是「{speaker_name}」在會議中的所有發言內容，請從中整理出 3-5 條最重要的發言重點，若沒有重點，請回傳「{speaker_name} 本次會議中無重要發言」。請按照以下格式輸出，每個重點以分號分隔：\n{speaker_name}：重點1；重點2；重點3；...；\n\n---\n{full_dialogue}\n---"
         
         highlight = _get_llm_response(prompt)
         if highlight:
             speaker_highlights.append(highlight)
+
+    # --- 偵錯用 ---
+    print(f"【偵錯】最終的發言人重點列表: {speaker_highlights}")
+    # --- 偵錯結束 ---
             
     return speaker_highlights
 
-def process_transcription(transcription: str, chunk_size: int = 10) -> tuple[str, str, list[str]]:
+def process_transcription(transcription: str, chunk_size: int = 15) -> tuple[str, str, list[str]]:
     """
     處理會議逐字稿，生成全局摘要和發言人重點。
 

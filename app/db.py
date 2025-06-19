@@ -78,9 +78,35 @@ def init_db():
                 srt_path TEXT,
                 rttm_path TEXT,
                 speaker_srt_path TEXT,
-                error_message TEXT
+                error_message TEXT,
+                global_summary TEXT,
+                chunk_summaries TEXT,
+                speaker_highlights TEXT,
+                summary_generated_at TIMESTAMP
             )
         ''')
+        
+        # 為現有的資料庫添加新欄位（如果它們還不存在）
+        try:
+            cursor.execute('ALTER TABLE meetings ADD COLUMN global_summary TEXT')
+        except sqlite3.OperationalError:
+            pass  # 欄位已存在
+        
+        try:
+            cursor.execute('ALTER TABLE meetings ADD COLUMN chunk_summaries TEXT')
+        except sqlite3.OperationalError:
+            pass  # 欄位已存在
+        
+        try:
+            cursor.execute('ALTER TABLE meetings ADD COLUMN speaker_highlights TEXT')
+        except sqlite3.OperationalError:
+            pass  # 欄位已存在
+        
+        try:
+            cursor.execute('ALTER TABLE meetings ADD COLUMN summary_generated_at TIMESTAMP')
+        except sqlite3.OperationalError:
+            pass  # 欄位已存在
+        
         db.commit()
         db.close()
         logger.info("資料庫已初始化。")
@@ -131,6 +157,59 @@ def delete_meeting_by_id(meeting_id):
     cursor = conn.execute(sql, (meeting_id,))
     conn.commit()
     return cursor.rowcount > 0  # 返回是否成功刪除
+
+def save_meeting_summary(meeting_id, global_summary, chunk_summaries, speaker_highlights):
+    """儲存會議的 AI 摘要到資料庫。"""
+    import json
+    from datetime import datetime
+    
+    # 將 speaker_highlights 列表轉換為 JSON 字串
+    speaker_highlights_json = json.dumps(speaker_highlights, ensure_ascii=False) if speaker_highlights else None
+    
+    sql = '''UPDATE meetings 
+             SET global_summary = ?, 
+                 chunk_summaries = ?, 
+                 speaker_highlights = ?, 
+                 summary_generated_at = ?
+             WHERE id = ?'''
+    
+    conn = get_db()
+    conn.execute(sql, (
+        global_summary, 
+        chunk_summaries, 
+        speaker_highlights_json, 
+        datetime.now(),
+        meeting_id
+    ))
+    conn.commit()
+
+def get_meeting_summary(meeting_id):
+    """獲取會議的 AI 摘要。"""
+    import json
+    
+    sql = '''SELECT global_summary, chunk_summaries, speaker_highlights, summary_generated_at 
+             FROM meetings WHERE id = ?'''
+    cursor = get_db().execute(sql, (meeting_id,))
+    result = cursor.fetchone()
+    
+    if result and result['global_summary']:
+        # 將 speaker_highlights 從 JSON 字串轉換回列表
+        speaker_highlights = None
+        if result['speaker_highlights']:
+            try:
+                speaker_highlights = json.loads(result['speaker_highlights'])
+            except json.JSONDecodeError:
+                logger.warning(f"無法解析會議 {meeting_id} 的發言人重點 JSON")
+                speaker_highlights = []
+        
+        return {
+            'global_summary': result['global_summary'],
+            'chunk_summaries': result['chunk_summaries'],
+            'speaker_highlights': speaker_highlights,
+            'summary_generated_at': result['summary_generated_at']
+        }
+    
+    return None
 
 def init_app(app):
     """

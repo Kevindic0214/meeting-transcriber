@@ -90,56 +90,6 @@
     </style>
     
     {% block extra_css %}{% endblock %}
-    
-    <!-- 調試腳本 - 監控CSS載入 -->
-    <script>
-        console.log('🔄 頁面開始載入: ' + new Date().toLocaleTimeString());
-        console.log('📑 文檔就緒狀態: ' + document.readyState);
-        
-        // 監控樣式表載入
-        const cssFiles = {
-            'Bootstrap': 'bootstrap.min.css',
-            'Font Awesome': 'font-awesome.min.css',
-            'Gentelella': 'custom.min.css',
-            '自訂樣式': 'custom.css'
-        };
-        
-        function checkStylesheets() {
-            console.log('🎨 檢查樣式表載入狀態:');
-            const loadedSheets = Array.from(document.styleSheets).map(sheet => sheet.href || 'inline');
-            
-            for (const [name, identifier] of Object.entries(cssFiles)) {
-                const isLoaded = loadedSheets.some(href => href.includes(identifier));
-                console.log(`  ${name}: ${isLoaded ? '✅ 已載入' : '❌ 未載入'}`);
-            }
-        }
-        
-        // 頁面載入時檢查
-        window.addEventListener('DOMContentLoaded', function() {
-            console.log('🔄 DOM 內容已載入: ' + new Date().toLocaleTimeString());
-            checkStylesheets();
-            
-            // 調試下拉選單元素
-            console.log('🔍 檢查下拉選單元素:');
-            const dropdown = document.querySelector('.nav-item.dropdown');
-            if (dropdown) {
-                console.log('  下拉選單容器: ✅ 找到');
-                console.log('  容器位置:', dropdown.getBoundingClientRect());
-                console.log('  容器樣式:', window.getComputedStyle(dropdown));
-                
-                const dropdownMenu = dropdown.querySelector('.dropdown-menu');
-                if (dropdownMenu) {
-                    console.log('  下拉選單: ✅ 找到');
-                    console.log('  選單位置:', dropdownMenu.getBoundingClientRect());
-                    console.log('  選單樣式:', window.getComputedStyle(dropdownMenu));
-                } else {
-                    console.log('  下拉選單: ❌ 未找到');
-                }
-            } else {
-                console.log('  下拉選單容器: ❌ 未找到');
-            }
-        });
-    </script>
 </head>
 
 <body class="nav-md">
@@ -259,164 +209,46 @@
         </div>
     </div>
 
-    <!-- JavaScript 載入調試 -->
-    <script>
-        console.log('📜 開始載入 JavaScript 庫: ' + new Date().toLocaleTimeString());
-        
-        // 創建監控函數
-        function createScriptLoadMonitor(scriptName) {
-            return function() {
-                console.log(`📜 ${scriptName} 已載入: ` + new Date().toLocaleTimeString());
-                
-                // 檢查全局變數
-                if (scriptName === 'jQuery') {
-                    console.log(`  jQuery 版本: ${$.fn.jquery}`);
-                    window._jQueryLoaded = true;
-                }
-                else if (scriptName === 'Bootstrap') {
-                    console.log(`  Bootstrap 可用: ${typeof $.fn.modal !== 'undefined' ? '是' : '否'}`);
-                    console.log(`  Bootstrap 下拉選單: ${typeof $.fn.dropdown !== 'undefined' ? '是' : '否'}`);
-                    window._bootstrapLoaded = true;
-                }
-                else if (scriptName === 'Gentelella') {
-                    console.log(`  Gentelella 可用: ${typeof $.fn.fullCalendar !== 'undefined' ? '是' : '否'}`);
-                    window._gentelellaLoaded = true;
-                }
-            };
-        }
-        
-        // 創建監控腳本元素
-        function monitorScript(url, scriptName) {
-            const originalScript = document.createElement('script');
-            originalScript.src = url;
-            originalScript.onload = createScriptLoadMonitor(scriptName);
-            originalScript.onerror = function() {
-                console.error(`❌ ${scriptName} 載入失敗!`);
-            };
-            return originalScript;
-        }
-    </script>
-
-    <!-- JavaScript 文件 - 使用監控版本 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" onload="createScriptLoadMonitor('jQuery')()" onerror="console.error('❌ jQuery 載入失敗!')"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js" onload="createScriptLoadMonitor('jQuery UI')()" onerror="console.error('❌ jQuery UI 載入失敗!')"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" onload="createScriptLoadMonitor('Bootstrap')()" onerror="console.error('❌ Bootstrap 載入失敗!')"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gentelella/1.4.0/js/custom.min.js" onload="createScriptLoadMonitor('Gentelella')()" onerror="console.error('❌ Gentelella 載入失敗!')"></script>
+    <!-- JavaScript 文件 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gentelella/1.4.0/js/custom.min.js"></script>
     
     <!-- Custom Theme Scripts -->
-    <script src="{{ url_for('static', filename='js/main.js') }}" onload="console.log('📜 自訂腳本已載入: ' + new Date().toLocaleTimeString())" onerror="console.error('❌ 自訂腳本載入失敗!')"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
     {{ moment.include_moment() }}
     {% block extra_js %}{% endblock %}
     
     <script>
         $(document).ready(function() {
-            console.log('🚀 jQuery DOM Ready 執行: ' + new Date().toLocaleTimeString());
-            
-            // 檢查下拉選單元素狀態
-            console.log('🔍 檢查下拉選單初始化:');
-            const $dropdown = $('.nav-item.dropdown');
-            const $dropdownToggle = $('.dropdown-toggle');
-            const $dropdownMenu = $('.dropdown-menu');
-            
-            console.log(`  找到 ${$dropdown.length} 個下拉選單容器`);
-            console.log(`  找到 ${$dropdownToggle.length} 個下拉選單按鈕`);
-            console.log(`  找到 ${$dropdownMenu.length} 個下拉選單`);
-            
-            // 檢查 Bootstrap 下拉選單功能
-            if (typeof $.fn.dropdown !== 'undefined') {
-                console.log('✅ Bootstrap 下拉選單功能可用');
-                // 確保下拉選單正常工作
-                $('.dropdown-toggle').dropdown();
-                console.log('✅ 下拉選單已初始化');
-            } else {
-                console.error('❌ Bootstrap 下拉選單功能不可用');
-            }
+            // 修正下拉選單切換
+            $('.dropdown-toggle').dropdown();
             
             // 點擊外部關閉下拉選單
             $(document).on('click', function(e) {
                 if (!$(e.target).closest('.dropdown').length) {
-                    console.log('👆 點擊外部，關閉下拉選單');
                     $('.dropdown.open').removeClass('open');
                 }
             });
             
             // 修正下拉選單切換
             $('.dropdown-toggle').on('click', function(e) {
-                console.log('👆 點擊下拉選單按鈕');
                 e.preventDefault();
                 e.stopPropagation();
                 
                 var $dropdown = $(this).closest('.dropdown');
                 var isOpen = $dropdown.hasClass('open');
                 
-                console.log(`  當前狀態: ${isOpen ? '已開啟' : '已關閉'}`);
-                
                 // 關閉所有其他下拉選單
                 $('.dropdown.open').removeClass('open');
-                console.log('  已關閉所有其他下拉選單');
                 
                 // 切換當前下拉選單
                 if (!isOpen) {
                     $dropdown.addClass('open');
-                    console.log('  ✅ 開啟當前下拉選單');
-                    
-                    // 檢查下拉選單位置
-                    const $menu = $dropdown.find('.dropdown-menu');
-                    const menuRect = $menu[0].getBoundingClientRect();
-                    console.log('  下拉選單位置:', menuRect);
-                } else {
-                    console.log('  ✅ 關閉當前下拉選單');
                 }
             });
-            
-            // 監控下拉選單狀態變化
-            $('.dropdown').on('show.bs.dropdown', function() {
-                console.log('📋 Bootstrap 下拉選單顯示事件觸發');
-            });
-            
-            $('.dropdown').on('hide.bs.dropdown', function() {
-                console.log('📋 Bootstrap 下拉選單隱藏事件觸發');
-            });
-        });
-        
-        // 頁面完全載入後的檢查
-        window.addEventListener('load', function() {
-            console.log('🏁 頁面完全載入: ' + new Date().toLocaleTimeString());
-            console.log('📊 腳本載入狀態檢查:');
-            console.log(`  jQuery: ${window._jQueryLoaded ? '✅ 已載入' : '❌ 未載入'}`);
-            console.log(`  Bootstrap: ${window._bootstrapLoaded ? '✅ 已載入' : '❌ 未載入'}`);
-            console.log(`  Gentelella: ${window._gentelellaLoaded ? '✅ 已載入' : '❌ 未載入'}`);
-            
-            // 檢查 Alert 元素
-            const alerts = $('.alert');
-            console.log(`🚨 頁面載入完成時有 ${alerts.length} 個 Alert 元素`);
-            alerts.each(function(index) {
-                console.log(`  Alert ${index + 1}: 類別=${$(this).attr('class')}`);
-                
-                // 檢查是否有自動關閉的事件綁定
-                const closeEvents = $._data($(this)[0], 'events');
-                console.log(`  Alert ${index + 1} 事件:`, closeEvents);
-            });
-            
-            // 最終下拉選單檢查
-            console.log('🔍 最終下拉選單狀態檢查:');
-            const dropdown = document.querySelector('.nav-item.dropdown');
-            if (dropdown) {
-                const computedStyle = window.getComputedStyle(dropdown);
-                console.log('  下拉選單容器 position:', computedStyle.position);
-                console.log('  下拉選單容器 z-index:', computedStyle.zIndex);
-                
-                const dropdownMenu = dropdown.querySelector('.dropdown-menu');
-                if (dropdownMenu) {
-                    const menuStyle = window.getComputedStyle(dropdownMenu);
-                    console.log('  下拉選單 position:', menuStyle.position);
-                    console.log('  下拉選單 z-index:', menuStyle.zIndex);
-                    console.log('  下拉選單 display:', menuStyle.display);
-                    console.log('  下拉選單 top:', menuStyle.top);
-                    console.log('  下拉選單 right:', menuStyle.right);
-                }
-            }
         });
     </script>
 </body>

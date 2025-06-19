@@ -17,9 +17,10 @@ from flask import (
     Response
 )
 
-from app.db import add_meeting, get_all_meetings, get_meeting_by_id, delete_meeting_by_id
+from app.db import add_meeting, get_all_meetings, get_meeting_by_id, delete_meeting_by_id, save_meeting_summary, get_meeting_summary
 from app.services.processing import process_meeting
 from utils.transcription_processor import process_transcription
+from utils.export_utils import format_summary_for_export, create_summary_docx
 from . import bp
 
 logger = logging.getLogger(__name__)
@@ -195,6 +196,47 @@ def stream_audio(meeting_id):
         
     return send_file(file_path, mimetype='audio/wav')
 
+@bp.route('/download/<meeting_id>/summary/<file_type>')
+def download_summary(meeting_id, file_type):
+    """下載會議摘要檔案 (txt 或 docx)"""
+    # 檢查支援的檔案類型
+    if file_type not in ['txt', 'docx']:
+        flash('不支援的檔案類型', 'error')
+        return redirect(url_for('main.meeting_detail', meeting_id=meeting_id))
+        
+    # 獲取會議資訊和摘要
+    meeting = get_meeting_by_id(meeting_id)
+    summary_data = get_meeting_summary(meeting_id)
+
+    if not meeting or not summary_data:
+        flash('找不到會議摘要', 'error')
+        return redirect(url_for('main.meeting_detail', meeting_id=meeting_id))
+        
+    original_name = Path(meeting['original_filename']).stem
+    
+    if file_type == 'txt':
+        # 生成 TXT 內容
+        content = format_summary_for_export(summary_data, meeting)
+        
+        # 準備下載
+        return Response(
+            content,
+            mimetype="text/plain",
+            headers={"Content-disposition": f"attachment; filename={original_name}_summary.txt"}
+        )
+    
+    elif file_type == 'docx':
+        # 生成 DOCX 檔案流
+        file_stream = create_summary_docx(summary_data, meeting)
+        
+        # 準備下載
+        return send_file(
+            file_stream,
+            as_attachment=True,
+            download_name=f"{original_name}_summary.docx",
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+
 @bp.route('/download/<meeting_id>/<file_type>')
 def download_file_route(meeting_id, file_type):
     """下載處理結果檔案"""
@@ -239,6 +281,21 @@ def generate_meeting_summary(meeting_id):
         if meeting['status'] != 'completed':
             return jsonify({'status': 'error', 'message': '會議尚未處理完成'}), 400
         
+        # 檢查是否要強制重新生成
+        request_data = request.get_json() or {}
+        force_regenerate = request_data.get('force_regenerate', False)
+        
+        # 檢查是否已有儲存的摘要（除非強制重新生成）
+        if not force_regenerate:
+            existing_summary = get_meeting_summary(meeting_id)
+            if existing_summary:
+                logger.info(f"會議 {meeting_id} 已有儲存的摘要，直接返回")
+                return jsonify({
+                    'status': 'success',
+                    'data': existing_summary,
+                    'from_cache': True
+                })
+        
         # 讀取語者標註字幕檔案
         if not meeting['speaker_srt_path']:
             return jsonify({'status': 'error', 'message': '找不到會議逐字稿'}), 404
@@ -261,18 +318,51 @@ def generate_meeting_summary(meeting_id):
         logger.info(f"開始為會議 {meeting_id} 生成 AI 摘要")
         global_summary, chunk_summaries, speaker_highlights = process_transcription(transcription_text)
         
+        # 將結果儲存到資料庫
+        save_meeting_summary(meeting_id, global_summary, chunk_summaries, speaker_highlights)
+        logger.info(f"會議 {meeting_id} 的 AI 摘要已儲存到資料庫")
+        
         return jsonify({
             'status': 'success',
             'data': {
                 'global_summary': global_summary,
                 'chunk_summaries': chunk_summaries,
                 'speaker_highlights': speaker_highlights
-            }
+            },
+            'from_cache': False
         })
         
     except Exception as e:
         logger.error(f"生成會議摘要時發生錯誤: {e}", exc_info=True)
         return jsonify({'status': 'error', 'message': '生成摘要時發生錯誤，請稍後再試'}), 500
+
+@bp.route('/api/meetings/<meeting_id>/summary', methods=['GET'])
+def get_meeting_summary_api(meeting_id):
+    """獲取會議摘要的 API"""
+    try:
+        meeting = get_meeting_by_id(meeting_id)
+        if not meeting:
+            return jsonify({'status': 'error', 'message': '找不到指定的會議記錄'}), 404
+        
+        # 獲取儲存的摘要
+        summary_data = get_meeting_summary(meeting_id)
+        if summary_data:
+            return jsonify({
+                'status': 'success',
+                'data': summary_data,
+                'has_summary': True
+            })
+        else:
+            return jsonify({
+                'status': 'success',
+                'data': None,
+                'has_summary': False,
+                'message': '尚未生成摘要'
+            })
+            
+    except Exception as e:
+        logger.error(f"獲取會議摘要時發生錯誤: {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': '獲取摘要時發生錯誤'}), 500
 
 def parse_srt_to_transcription(srt_content):
     """將 SRT 格式轉換為逐字稿格式"""

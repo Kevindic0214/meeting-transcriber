@@ -522,78 +522,10 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-    // ===== 調試功能 =====
-    console.log('🔍 開始調試模式');
-    
-    // 檢查 Gentelella 腳本
-    console.log('🔎 檢查 Gentelella 腳本:');
-    
-    // 尋找所有已載入的腳本
-    const allScripts = Array.from(document.scripts).map(s => s.src);
-    const gentelellaScript = allScripts.find(src => src.includes('gentelella') && src.includes('custom.min.js'));
-    
-    if (gentelellaScript) {
-        console.log('✅ 找到 Gentelella 腳本:', gentelellaScript);
-        
-        // 嘗試檢查 Gentelella 中可能影響 Alert 的函數
-        console.log('🔍 檢查 Gentelella 中的 Alert 相關功能:');
-        
-        // 檢查是否有自動關閉 alert 的代碼
-        if (typeof $.fn.alert !== 'undefined') {
-            console.log('  Bootstrap Alert 插件: ✅ 已載入');
-            console.log('  Alert 原始方法:', $.fn.alert.Constructor.prototype);
-        } else {
-            console.log('  Bootstrap Alert 插件: ❌ 未載入');
-        }
-        
-        // 檢查 Gentelella 是否修改了 alert 相關方法
-        if (window.Gentelella) {
-            console.log('  Gentelella 全局對象:', window.Gentelella);
-        } else {
-            console.log('  未找到 Gentelella 全局對象');
-        }
-        
-        // 檢查是否有任何全局函數處理 alert
-        const possibleAlertHandlers = [
-            'closeAlert', 
-            'hideAlert', 
-            'dismissAlert', 
-            'handleAlert', 
-            'autoCloseAlert'
-        ];
-        
-        possibleAlertHandlers.forEach(handler => {
-            if (typeof window[handler] === 'function') {
-                console.log(`  找到可能的 Alert 處理函數: ${handler}`);
-            }
-        });
-        
-        // 檢查 document 上是否有 alert 相關事件
-        try {
-            const docEvents = $._data(document, 'events') || {};
-            console.log('  Document 事件:', docEvents);
-            
-            // 特別檢查點擊事件中是否有 alert 相關處理
-            if (docEvents.click) {
-                docEvents.click.forEach((handler, i) => {
-                    const handlerStr = handler.handler.toString();
-                    if (handlerStr.includes('alert') || handlerStr.includes('dismiss')) {
-                        console.log(`  點擊事件 #${i} 可能處理 Alert:`, handlerStr.substring(0, 100) + '...');
-                    }
-                });
-            }
-        } catch (e) {
-            console.log('  無法檢查文檔事件:', e);
-        }
-    } else {
-        console.warn('⚠️ 未找到 Gentelella 腳本');
-    }
     
     // 監控格式說明區域
     const formatInfo = document.querySelector('.format-info-permanent');
     if (formatInfo) {
-        console.log('✅ 找到格式說明區域:', formatInfo);
-        
         // 監控 DOM 變化
         const observer = new MutationObserver(function(mutations) {
             mutations.forEach(function(mutation) {
@@ -601,11 +533,7 @@ $(document).ready(function() {
                     mutation.removedNodes.forEach(function(node) {
                         if (node.nodeType === 1) { // Element node
                             if (node.classList && node.classList.contains('format-info-permanent')) {
-                                console.error('❌ 格式說明被刪除了！', node);
-                                console.trace('刪除的調用堆疊');
-                            }
-                            if (node.classList && node.classList.contains('alert')) {
-                                console.warn('⚠️ Alert 元素被刪除:', node.className);
+                                // 格式說明被刪除，需要保護
                             }
                         }
                     });
@@ -621,25 +549,15 @@ $(document).ready(function() {
         // 定期檢查格式說明是否還存在
         setInterval(function() {
             const stillExists = document.querySelector('.format-info-permanent');
-            if (!stillExists) {
-                console.error('❌ 格式說明區域消失了！時間:', new Date().toLocaleTimeString());
-            }
+            // 保持檢查但不輸出日誌
         }, 2000);
-        
-    } else {
-        console.error('❌ 找不到格式說明區域');
     }
     
     // 監控所有可能影響 alert 的操作
     const originalRemove = jQuery.fn.remove;
     jQuery.fn.remove = function() {
         if (this.hasClass('format-info-permanent')) {
-            console.error('❌ 嘗試刪除格式說明！', this);
-            console.trace('調用堆疊');
             return this; // 阻止刪除
-        }
-        if (this.hasClass('alert')) {
-            console.log('🗑️ 刪除 Alert 元素:', this.attr('class'));
         }
         return originalRemove.apply(this, arguments);
     };
@@ -648,13 +566,7 @@ $(document).ready(function() {
     const originalFadeOut = jQuery.fn.fadeOut;
     jQuery.fn.fadeOut = function() {
         if (this.hasClass('format-info-permanent')) {
-            console.error('❌ 嘗試淡出格式說明！', this);
-            console.trace('調用堆疊');
             return this; // 阻止淡出
-        }
-        if (this.hasClass('alert')) {
-            console.log('👻 淡出 Alert 元素:', this.attr('class'));
-            console.trace('淡出調用堆疊');
         }
         return originalFadeOut.apply(this, arguments);
     };
@@ -663,29 +575,18 @@ $(document).ready(function() {
     const originalHide = jQuery.fn.hide;
     jQuery.fn.hide = function() {
         if (this.hasClass('format-info-permanent')) {
-            console.error('❌ 嘗試隱藏格式說明！', this);
-            console.trace('調用堆疊');
             return this; // 阻止隱藏
-        }
-        if (this.hasClass('alert')) {
-            console.log('🙈 隱藏 Alert 元素:', this.attr('class'));
-            console.trace('隱藏調用堆疊');
         }
         return originalHide.apply(this, arguments);
     };
     
     // 監控 Bootstrap 的 alert 插件
     if ($.fn.alert && $.fn.alert.Constructor) {
-        console.log('🔄 監控 Bootstrap Alert 插件');
-        
         const originalClose = $.fn.alert.Constructor.prototype.close;
         $.fn.alert.Constructor.prototype.close = function(e) {
             const $this = $(this);
-            console.log('🚪 Bootstrap Alert 關閉觸發:', $this.attr('class'));
             
             if ($this.hasClass('format-info-permanent')) {
-                console.error('❌ Bootstrap 嘗試關閉格式說明！');
-                console.trace('Bootstrap 關閉調用堆疊');
                 return; // 阻止關閉
             }
             
@@ -703,30 +604,21 @@ $(document).ready(function() {
     const progressBar = document.getElementById('progressBar');
     const progressText = document.getElementById('progressText');
     
-    console.log('🎯 初始化上傳組件:', {
-        uploadArea: !!uploadArea,
-        fileInput: !!fileInput,
-        fileInfo: !!fileInfo
-    });
-    
     // 拖放功能
     if (uploadArea) {
         uploadArea.addEventListener('dragover', function(e) {
             e.preventDefault();
             uploadArea.classList.add('dragover');
-            console.log('📂 拖放: dragover');
         });
         
         uploadArea.addEventListener('dragleave', function(e) {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
-            console.log('📂 拖放: dragleave');
         });
         
         uploadArea.addEventListener('drop', function(e) {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
-            console.log('📂 拖放: drop');
             
             const files = e.dataTransfer.files;
             if (files.length > 0) {
@@ -739,7 +631,6 @@ $(document).ready(function() {
     // 檔案選擇處理
     if (fileInput) {
         fileInput.addEventListener('change', function(e) {
-            console.log('📁 檔案選擇:', e.target.files.length);
             if (e.target.files.length > 0) {
                 handleFileSelection(e.target.files[0]);
             }
@@ -747,21 +638,17 @@ $(document).ready(function() {
     }
     
     function handleFileSelection(file) {
-        console.log('🔍 處理檔案選擇:', file.name, file.size);
-        
         // 檢查檔案類型
         const allowedExtensions = ['.m4a', '.mp3', '.wav', '.flac', '.webm'];
         const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
         
         if (!allowedExtensions.includes(fileExtension)) {
-            console.log('❌ 檔案格式不支援:', fileExtension);
             showAlert('不支援的檔案格式！請選擇 M4A、MP3、WAV、FLAC 或 WebM 格式的檔案。', 'danger');
             return;
         }
         
         // 檢查檔案大小 (100MB 限制)
         if (file.size > 100 * 1024 * 1024) {
-            console.log('❌ 檔案太大:', file.size);
             showAlert('檔案太大！請選擇小於 100MB 的檔案。', 'danger');
             return;
         }
@@ -771,7 +658,6 @@ $(document).ready(function() {
         if (fileSize) fileSize.textContent = formatFileSize(file.size);
         if (fileInfo) fileInfo.style.display = 'block';
         
-        console.log('✅ 檔案選擇成功，隱藏進階設定');
         // 隱藏進階設定面板，讓使用者專注於上傳
         $('#advancedSection').slideUp();
     }
@@ -787,10 +673,8 @@ $(document).ready(function() {
     // 表單提交處理
     $('#uploadForm').on('submit', function(e) {
         e.preventDefault();
-        console.log('📤 表單提交');
         
         if (!fileInput || !fileInput.files[0]) {
-            console.log('❌ 沒有選擇檔案');
             showAlert('請先選擇要上傳的檔案！', 'warning');
             return;
         }
@@ -799,7 +683,6 @@ $(document).ready(function() {
     });
     
     function startUploadProcess() {
-        console.log('🚀 開始上傳流程');
         // 隱藏上傳區域，顯示進度
         $('#uploadArea').slideUp();
         $('#uploadProgress').slideDown();
@@ -821,13 +704,11 @@ $(document).ready(function() {
         
         // 上傳完成
         xhr.onload = function() {
-            console.log('📤 上傳完成，狀態:', xhr.status);
             if (progressBar) progressBar.style.width = '100%';
             
             if (xhr.status >= 200 && xhr.status < 300) {
                 try {
                     const response = JSON.parse(xhr.responseText);
-                    console.log('📝 服務器回應:', response);
                     if (response.status === 'success') {
                         if (progressText) progressText.textContent = '✅ 上傳成功！後端處理中...';
                         updateProcessingSteps(2);
@@ -841,7 +722,6 @@ $(document).ready(function() {
                         throw new Error(response.message || '未知的錯誤');
                     }
                 } catch (e) {
-                    console.error('❌ 處理回應錯誤:', e);
                     if (progressText) progressText.textContent = '❌ 處理回應失敗！';
                     showAlert(`處理伺服器回應時發生錯誤: ${e.message}`, 'danger');
                     resetUploadInterface();
@@ -854,7 +734,6 @@ $(document).ready(function() {
                         errorMessage = errorResponse.message;
                     }
                 } catch (e) {}
-                console.error('❌ HTTP 錯誤:', errorMessage);
                 if (progressText) progressText.textContent = '❌ 上傳失敗！';
                 showAlert(errorMessage, 'danger');
                 resetUploadInterface();
@@ -863,7 +742,6 @@ $(document).ready(function() {
         
         // 上傳出錯
         xhr.onerror = function() {
-            console.error('❌ 網路錯誤');
             if (progressText) progressText.textContent = '❌ 上傳時發生網路錯誤！';
             showAlert('上傳失敗，請檢查您的網路連線。', 'danger');
             resetUploadInterface();
@@ -873,7 +751,6 @@ $(document).ready(function() {
     }
     
     function updateProcessingSteps(currentStep) {
-        console.log('📊 更新處理步驟:', currentStep);
         const stepTexts = [
             '檔案上傳中...',
             '音訊預處理中...',
@@ -917,21 +794,8 @@ $(document).ready(function() {
     }
     
     function showAlert(message, type) {
-        console.log('🚨 顯示提醒:', type, message);
-        
-        // 記錄當前所有 alert 元素
-        const existingAlerts = document.querySelectorAll('.alert');
-        console.log('📋 當前 Alert 元素:', existingAlerts.length);
-        existingAlerts.forEach((alert, index) => {
-            console.log(`  ${index}: ${alert.className}`);
-        });
-        
         // 只移除動態生成的提醒，不影響頁面固定內容
         const toRemove = $('.dynamic-alert, .alert-dismissible:not(.format-info-permanent)');
-        console.log('🗑️ 準備移除的 Alert:', toRemove.length);
-        toRemove.each(function(index) {
-            console.log(`  移除 ${index}: ${this.className}`);
-        });
         toRemove.remove();
 
         const alertHtml = `
@@ -944,16 +808,13 @@ $(document).ready(function() {
         `;
         
         $('body').prepend(alertHtml);
-        console.log('➕ 新增動態提醒');
         
         setTimeout(() => {
             $('.dynamic-alert').fadeOut(function() { $(this).remove(); });
-            console.log('⏰ 自動移除動態提醒');
         }, 5000);
     }
     
     function resetUploadInterface() {
-        console.log('🔄 重置上傳介面');
         $('#uploadProgress').slideUp();
         $('#uploadArea').slideDown();
         $('#advancedSection').slideDown();
@@ -964,20 +825,16 @@ $(document).ready(function() {
     }
     
     function monitorProcessingProgress(meetingId) {
-        console.log(`[SSE-Debug] 開始監控處理進度，Meeting ID: ${meetingId}`);
-        
         // 使用 Server-Sent Events 來監控處理進度
         const eventSource = new EventSource(`/meetings/${meetingId}/stream`);
 
         eventSource.onopen = function(event) {
-            console.log("[SSE-Debug] ✅ 連線已成功建立 (onopen).", event);
+            // 連線成功建立
         };
         
         eventSource.onmessage = function(event) {
             try {
-                console.log("[SSE-Debug] 📩 收到原始訊息 (raw):", event.data);
                 const data = JSON.parse(event.data);
-                console.log('[SSE-Debug] 📈 解析後的進度更新:', data);
                 
                 // 更新進度顯示
                 if (data.step && data.message) {
@@ -999,7 +856,6 @@ $(document).ready(function() {
                 
                 // 如果處理完成，跳轉到結果頁面
                 if (data.step === 'completed') {
-                    console.log('[SSE-Debug] ✅ 處理完成，關閉 SSE 連線並準備跳轉');
                     eventSource.close();
                     
                     showAlert('🎉 處理完成！即將跳轉到結果頁面...', 'success');
@@ -1011,7 +867,6 @@ $(document).ready(function() {
                 
                 // 如果處理失敗，顯示錯誤並重置介面
                 if (data.step === 'failed' || data.step === 'error') {
-                    console.error('[SSE-Debug] ❌ 處理失敗，關閉 SSE 連線:', data.message);
                     eventSource.close();
                     
                     showAlert(`處理失敗: ${data.message || '未知錯誤'}`, 'danger');
@@ -1019,22 +874,12 @@ $(document).ready(function() {
                 }
                 
             } catch (e) {
-                console.error('[SSE-Debug] ❌ 解析進度資料失敗:', e, "收到的資料:", event.data);
+                // 解析失敗時的處理
             }
         };
         
         eventSource.onerror = function(error) {
-            console.error('[SSE-Debug] ❌ 進度監控連線錯誤 (onerror):', error);
-            
-            const readyStateMap = {
-                0: 'CONNECTING',
-                1: 'OPEN',
-                2: 'CLOSED'
-            };
-            console.log(`[SSE-Debug] 目前連線狀態: ${readyStateMap[eventSource.readyState] || 'UNKNOWN'}`);
-
             eventSource.close();
-            console.log("[SSE-Debug] 已在 onerror 事件中呼叫 eventSource.close()");
             
             // 如果連線失敗，等待一段時間後跳轉（作為備用方案）
             showAlert('⚠️ 無法監控處理進度，將在稍後跳轉到結果頁面...', 'warning');
@@ -1047,7 +892,6 @@ $(document).ready(function() {
         // 設置超時保護（30分鐘）
         setTimeout(() => {
             if (eventSource.readyState !== EventSource.CLOSED) {
-                console.warn('⏰ 處理超時，強制跳轉');
                 eventSource.close();
                 showAlert('⚠️ 處理時間較長，將跳轉到結果頁面查看狀態...', 'warning');
                 window.location.href = `/meetings/${meetingId}`;
@@ -1059,16 +903,12 @@ $(document).ready(function() {
     loadRecentMeetings();
     
     function loadRecentMeetings() {
-        console.log('📚 載入最近會議記錄');
-        
         // 發送AJAX請求獲取最近的會議記錄
         $.ajax({
             url: '{{ url_for("main.get_recent_meetings") }}',
             method: 'GET',
             dataType: 'json',
             success: function(response) {
-                console.log('📝 獲取會議記錄回應:', response);
-                
                 if (response.status === 'success' && response.meetings && response.meetings.length > 0) {
                     // 有會議記錄，顯示列表
                     let meetingsHtml = '<div class="recent-meetings-list">';
@@ -1134,11 +974,8 @@ $(document).ready(function() {
                         </div>
                     `);
                 }
-                
-                console.log('✅ 會議記錄載入完成');
             },
             error: function(xhr, status, error) {
-                console.error('❌ 載入會議記錄失敗:', error);
                 $('#recentMeetings').html(`
                     <div class="text-center" style="padding: 2rem;">
                         <i class="fa fa-exclamation-triangle" style="font-size: 2rem; color: #f39c12; margin-bottom: 1rem;"></i>
@@ -1203,7 +1040,6 @@ $(document).ready(function() {
                 });
             }
         } catch (e) {
-            console.error('日期格式化錯誤:', e);
             return dateTimeStr;
         }
     }
@@ -1213,18 +1049,6 @@ $(document).ready(function() {
     elements.forEach((el, index) => {
         el.style.animationDelay = `${index * 0.1}s`;
     });
-    
-    console.log('🎉 頁面初始化完成');
-    
-    // 最終檢查
-    setTimeout(() => {
-        const finalCheck = document.querySelector('.format-info-permanent');
-        if (finalCheck) {
-            console.log('✅ 最終檢查：格式說明區域存在');
-        } else {
-            console.error('❌ 最終檢查：格式說明區域不存在！');
-        }
-    }, 3000);
 });
 </script>
 {% endblock %}

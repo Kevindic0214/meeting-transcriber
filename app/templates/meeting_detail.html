@@ -261,10 +261,21 @@
                         </div>
                         
                         <!-- 重新生成按鈕 -->
-                        <div style="text-align: center; margin-top: 2rem;">
-                            <button class="btn btn-outline-primary" onclick="generateSummary()">
+                        <div style="text-align: center; margin-top: 2rem; display: flex; justify-content: center; gap: 1rem;">
+                            <button class="btn btn-outline-primary" onclick="generateSummary(true)">
                                 <i class="fa fa-refresh"></i> 重新生成摘要
                             </button>
+
+                            <!-- 新增下載按鈕 -->
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <i class="fa fa-download"></i> 下載摘要 <span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a href="{{ url_for('main.download_summary', meeting_id=meeting.id, file_type='docx') }}"><i class="fa fa-file-word-o"></i> 下載 Word (.docx)</a></li>
+                                    <li><a href="{{ url_for('main.download_summary', meeting_id=meeting.id, file_type='txt') }}"><i class="fa fa-file-text-o"></i> 下載文字檔 (.txt)</a></li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     
@@ -371,6 +382,11 @@
         
         // 初始化側邊欄控制
         initializeSidebar();
+        
+        // 如果會議已完成，檢查是否已有摘要
+        if (meetingStatus === 'completed') {
+            checkExistingSummary();
+        }
         
         if (meetingStatus === 'processing' || meetingStatus === 'uploaded') {
             const progressContainer = document.querySelector('.progress');
@@ -756,17 +772,79 @@
         URL.revokeObjectURL(url);
     }
 
+    // 檢查是否已有儲存的摘要
+    function checkExistingSummary() {
+        fetch(`/api/meetings/{{ meeting.id }}/summary`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success' && data.has_summary) {
+                // 顯示已儲存的摘要
+                displaySummaryResults(data.data);
+                // 顯示來自快取的提示
+                const cacheIndicator = document.createElement('div');
+                cacheIndicator.style.cssText = `
+                    background: var(--info-color);
+                    color: white;
+                    padding: 0.5rem 1rem;
+                    border-radius: var(--radius-sm);
+                    font-size: 0.9rem;
+                    margin-bottom: 1rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                `;
+                cacheIndicator.innerHTML = `
+                    <i class="fa fa-info-circle"></i>
+                    已載入先前生成的摘要（生成時間：${data.data.summary_generated_at || '未知'}）
+                `;
+                document.getElementById('summaryResultSection').insertBefore(
+                    cacheIndicator, 
+                    document.getElementById('summaryResultSection').firstChild
+                );
+            }
+        })
+        .catch(error => {
+            console.error('檢查現有摘要時發生錯誤:', error);
+        });
+    }
+
     // AI 摘要相關函數
-    function generateSummary() {
+    function generateSummary(forceRegenerate = false) {
+        // 如果是強制重新生成，先確認
+        if (forceRegenerate) {
+            Swal.fire({
+                title: '確定要重新生成摘要嗎？',
+                text: '這將覆蓋現有的摘要內容',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: '是的，重新生成',
+                cancelButtonText: '取消'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    executeGenerateSummary(true);
+                }
+            });
+        } else {
+            executeGenerateSummary(false);
+        }
+    }
+    
+    function executeGenerateSummary(forceRegenerate) {
         // 顯示載入狀態
         showSummarySection('loading');
+        
+        // 準備請求參數
+        const requestBody = forceRegenerate ? { force_regenerate: true } : {};
         
         // 發送 API 請求
         fetch(`/api/meetings/{{ meeting.id }}/generate-summary`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-            }
+            },
+            body: JSON.stringify(requestBody)
         })
         .then(response => response.json())
         .then(data => {
@@ -859,6 +937,12 @@
             timer: 3000,
             showConfirmButton: false
         });
+        
+        // 移除快取指示器（如果存在）
+        const existingCacheIndicator = document.querySelector('#summaryResultSection > div:first-child');
+        if (existingCacheIndicator && existingCacheIndicator.innerHTML.includes('已載入先前生成的摘要')) {
+            existingCacheIndicator.remove();
+        }
     }
 
     function showSummaryError(message) {

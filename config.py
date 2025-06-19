@@ -14,8 +14,8 @@ class Config:
     # 用於 session 管理的密鑰
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
 
-    # 最大上傳檔案大小 (500MB)
-    MAX_CONTENT_LENGTH = 500 * 1024 * 1024
+    # 最大上傳檔案大小 (100MB)
+    MAX_CONTENT_LENGTH = 100 * 1024 * 1024
 
     # HuggingFace API Token
     HF_TOKEN = os.getenv("HF_TOKEN")

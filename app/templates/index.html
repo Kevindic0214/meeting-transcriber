@@ -24,7 +24,7 @@
                     <div class="row">
                         <div class="col-md-8">
                             <h4><i class="fa fa-info-circle"></i> 支援格式</h4>
-                            <p><strong>檔案格式：</strong>M4A、MP3、WAV、FLAC、WebM (最大 500MB)</p>
+                            <p><strong>檔案格式：</strong>M4A、MP3、WAV、FLAC、WebM (最大 100MB)</p>
                         </div>
                         <div class="col-md-4">
                             <h4><i class="fa fa-magic"></i> AI 處理</h4>
@@ -759,10 +759,10 @@ $(document).ready(function() {
             return;
         }
         
-        // 檢查檔案大小 (500MB 限制)
-        if (file.size > 500 * 1024 * 1024) {
+        // 檢查檔案大小 (100MB 限制)
+        if (file.size > 100 * 1024 * 1024) {
             console.log('❌ 檔案太大:', file.size);
-            showAlert('檔案太大！請選擇小於 500MB 的檔案。', 'danger');
+            showAlert('檔案太大！請選擇小於 100MB 的檔案。', 'danger');
             return;
         }
         

@@ -28,7 +28,7 @@ An intelligent meeting transcription and analysis system that combines OpenAI's 
 - An active **Hugging Face Token**.
 
 ### Limitations
-- **Maximum File Size**: 500MB (configurable).
+- **Maximum File Size**: 100MB (configurable).
 - The application automatically compresses audio to optimize for the Whisper API's 25MB limit.
 
 ## 🚀 Quick Start
@@ -74,7 +74,7 @@ The database will be created and initialized automatically on the first run.
 ```bash
 python run.py
 ```
-The application will be available at `http://127.0.0.1:5000`.
+The application will be available at `http://127.0.0.1:8080`.
 
 ## 🛠️ How It Works
 

@@ -581,16 +581,18 @@
 
 .subtitle-segment .timestamp:hover {
     color: var(--primary-color);
-    transform: scale(1.05);
 }
 
 .subtitle-segment .content {
     flex: 1;
     line-height: 1.6;
+    padding: 0;
+    display: flex;
+    align-items: baseline;
 }
 
 .subtitle-segment .speaker-tag {
-    font-weight: 600;
+    font-weight: 700;
     /* 預設顏色，會被行內樣式覆蓋 */
     color: var(--primary-color); 
     margin-right: 0.5rem;

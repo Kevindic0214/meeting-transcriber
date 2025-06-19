@@ -2,6 +2,9 @@ pyannote.audio
 openai
 python-dotenv
 srt
-flask
+Flask
 Flask-Moment
 pydub
+idna
+PyJWT
+python-docx

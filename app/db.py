@@ -86,27 +86,6 @@ def init_db():
             )
         ''')
         
-        # 為現有的資料庫添加新欄位（如果它們還不存在）
-        try:
-            cursor.execute('ALTER TABLE meetings ADD COLUMN global_summary TEXT')
-        except sqlite3.OperationalError:
-            pass  # 欄位已存在
-        
-        try:
-            cursor.execute('ALTER TABLE meetings ADD COLUMN chunk_summaries TEXT')
-        except sqlite3.OperationalError:
-            pass  # 欄位已存在
-        
-        try:
-            cursor.execute('ALTER TABLE meetings ADD COLUMN speaker_highlights TEXT')
-        except sqlite3.OperationalError:
-            pass  # 欄位已存在
-        
-        try:
-            cursor.execute('ALTER TABLE meetings ADD COLUMN summary_generated_at TIMESTAMP')
-        except sqlite3.OperationalError:
-            pass  # 欄位已存在
-        
         db.commit()
         db.close()
         logger.info("資料庫已初始化。")

@@ -169,6 +169,9 @@
                     <button class="btn btn-info btn-sm" onclick="toggleSubtitleMode()">
                         <i class="fa fa-user-tag"></i> <span id="modeToggleText">隱藏語者標籤</span>
                     </button>
+                    <button class="btn btn-secondary btn-sm" onclick="editSpeakerNames()">
+                        <i class="fa fa-edit"></i> 編輯發言者名稱
+                    </button>
                     <button class="btn btn-success btn-sm" onclick="copySubtitleText()">
                         <i class="fa fa-copy"></i> 複製文字
                     </button>
@@ -552,9 +555,13 @@
                 const colorClasses = ['primary-color', 'success-color', 'info-color', 'accent-color', 'warning-color'];
                 let nextColorIndex = 0;
 
+                // 儲存會議數據供後續使用
+                window.currentMeetingData = data;
+
                 data.segments.forEach(segment => {
                     // 確保語者ID格式一致
                     const speakerId = segment.speaker || "發言者未識別";
+                    const originalSpeakerId = segment.original_speaker || speakerId;
                     
                     // 為每個新語者分配一個顏色
                     if (!speakerColors[speakerId]) {
@@ -567,7 +574,7 @@
                         <div class="subtitle-segment" data-start="${segment.start_time}">
                             <div class="timestamp" onclick="seekToTime(${segment.start_time})" title="點擊跳轉至此時間點">${segment.start_time_formatted}</div>
                             <div class="content">
-                                <span class="speaker-tag" data-speaker="${speakerId}" style="color: var(--${speakerColor});">${speakerId}: </span>
+                                <span class="speaker-tag" data-speaker="${speakerId}" data-original-speaker="${originalSpeakerId}" style="color: var(--${speakerColor});">${speakerId}: </span>
                                 <span class="text">${segment.content}</span>
                             </div>
                         </div>
@@ -774,7 +781,7 @@
 
     // 檢查是否已有儲存的摘要
     function checkExistingSummary() {
-        fetch(`/api/meetings/{{ meeting.id }}/summary`)
+        fetch(`/api/meeting/{{ meeting.id }}/summary`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success' && data.has_summary) {
@@ -839,7 +846,7 @@
         const requestBody = forceRegenerate ? { force_regenerate: true } : {};
         
         // 發送 API 請求
-        fetch(`/api/meetings/{{ meeting.id }}/generate-summary`, {
+        fetch(`/api/meeting/{{ meeting.id }}/generate-summary`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -948,6 +955,142 @@
     function showSummaryError(message) {
         document.getElementById('summaryErrorMessage').textContent = message;
         showSummarySection('error');
+    }
+
+    // 編輯發言者名稱功能
+    function editSpeakerNames() {
+        if (!window.currentMeetingData || !window.currentMeetingData.segments) {
+            Swal.fire('錯誤', '無法載入發言者資訊', 'error');
+            return;
+        }
+
+        // 收集所有唯一的發言者
+        const speakers = new Set();
+        window.currentMeetingData.segments.forEach(segment => {
+            if (segment.original_speaker) {
+                speakers.add(segment.original_speaker);
+            }
+        });
+
+        const speakerList = Array.from(speakers).sort();
+        if (speakerList.length === 0) {
+            Swal.fire('提示', '此會議沒有可編輯的發言者', 'info');
+            return;
+        }
+
+        // 產生發言者編輯表單
+        let formHtml = '<div style="text-align: left;">';
+        speakerList.forEach(originalSpeaker => {
+            const currentName = getCurrentSpeakerName(originalSpeaker);
+            formHtml += `
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 0.5rem;">
+                        ${originalSpeaker}:
+                    </label>
+                    <input type="text" id="speaker_${originalSpeaker}" 
+                           value="${currentName}" 
+                           placeholder="請輸入新的發言者名稱" 
+                           style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+            `;
+        });
+        formHtml += '</div>';
+
+        Swal.fire({
+            title: '編輯發言者名稱',
+            html: formHtml,
+            width: 600,
+            showCancelButton: true,
+            confirmButtonText: '儲存變更',
+            cancelButtonText: '取消',
+            preConfirm: () => {
+                const updates = {};
+                let hasChanges = false;
+
+                speakerList.forEach(originalSpeaker => {
+                    const input = document.getElementById(`speaker_${originalSpeaker}`);
+                    const newName = input.value.trim();
+                    const currentName = getCurrentSpeakerName(originalSpeaker);
+                    
+                    if (newName && newName !== currentName) {
+                        updates[originalSpeaker] = newName;
+                        hasChanges = true;
+                    }
+                });
+
+                if (!hasChanges) {
+                    Swal.showValidationMessage('沒有變更需要儲存');
+                    return false;
+                }
+
+                return updates;
+            }
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                saveSpeakerNameChanges(result.value);
+            }
+        });
+    }
+
+    function getCurrentSpeakerName(originalSpeaker) {
+        // 從當前會議數據中獲取發言者的顯示名稱
+        if (window.currentMeetingData && window.currentMeetingData.speaker_names) {
+            return window.currentMeetingData.speaker_names[originalSpeaker] || originalSpeaker;
+        }
+        return originalSpeaker;
+    }
+
+    function saveSpeakerNameChanges(updates) {
+        // 顯示載入提示
+        Swal.fire({
+            title: '正在儲存...',
+            text: '請稍候',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        // 批量更新發言者名稱
+        const updatePromises = Object.entries(updates).map(([originalSpeaker, customName]) => {
+            return fetch(`/api/meeting/{{ meeting.id }}/speaker-names`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    original_speaker_id: originalSpeaker,
+                    custom_name: customName
+                })
+            });
+        });
+
+        Promise.all(updatePromises)
+            .then(responses => {
+                const allSuccessful = responses.every(response => response.ok);
+                if (allSuccessful) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '儲存成功！',
+                        text: '發言者名稱已更新',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        // 重新載入字幕內容
+                        fetchSubtitleContent();
+                    });
+                } else {
+                    throw new Error('部分更新失敗');
+                }
+            })
+            .catch(error => {
+                console.error('儲存發言者名稱時發生錯誤:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: '儲存失敗',
+                    text: '無法儲存發言者名稱變更，請稍後再試'
+                });
+            });
     }
     
     // 刪除按鈕的事件監聽

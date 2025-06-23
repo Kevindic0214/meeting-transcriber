@@ -4,13 +4,20 @@ import srt
 
 logger = logging.getLogger(__name__)
 
-def parse_srt_content(srt_content):
+def parse_srt_content(srt_content, speaker_name_mapping=None):
     """
     解析 SRT 格式的字幕內容，轉換為結構化資料
     
     這個函數將原始的 SRT 文字內容解析成包含時間戳記、語者資訊
     和文字內容的結構化資料，方便前端進行各種處理和顯示。
+    
+    Args:
+        srt_content (str): SRT 格式的字幕內容
+        speaker_name_mapping (dict): 發言者名稱映射，例如 {"發言者00": "張三", "發言者01": "李四"}
     """
+    if speaker_name_mapping is None:
+        speaker_name_mapping = {}
+        
     try:
         # 使用 srt 函式庫解析內容
         subtitles = list(srt.parse(srt_content))
@@ -18,7 +25,10 @@ def parse_srt_content(srt_content):
         segments = []
         for subtitle in subtitles:
             # 提取語者資訊（如果存在）
-            speaker = extract_speaker_from_content(subtitle.content)
+            original_speaker = extract_speaker_from_content(subtitle.content)
+            
+            # 使用自定義名稱（如果有的話）
+            display_speaker = speaker_name_mapping.get(original_speaker, original_speaker)
             
             # 清理內容文字（移除語者標籤）
             clean_content = clean_subtitle_content(subtitle.content)
@@ -30,7 +40,8 @@ def parse_srt_content(srt_content):
                 'start_time_formatted': format_time(subtitle.start.total_seconds()),
                 'end_time_formatted': format_time(subtitle.end.total_seconds()),
                 'duration': (subtitle.end - subtitle.start).total_seconds(),
-                'speaker': speaker,
+                'speaker': display_speaker,
+                'original_speaker': original_speaker,
                 'content': clean_content,
                 'original_content': subtitle.content
             }

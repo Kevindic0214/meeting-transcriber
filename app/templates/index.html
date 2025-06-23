@@ -905,7 +905,7 @@ $(document).ready(function() {
     function loadRecentMeetings() {
         // 發送AJAX請求獲取最近的會議記錄
         $.ajax({
-            url: '{{ url_for("main.get_recent_meetings") }}',
+            url: '/api/recent-meetings',
             method: 'GET',
             dataType: 'json',
             success: function(response) {

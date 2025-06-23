@@ -86,6 +86,17 @@ def init_db():
             )
         ''')
         
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS speaker_names (
+                meeting_id TEXT NOT NULL,
+                original_speaker_id TEXT NOT NULL,
+                custom_name TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (meeting_id, original_speaker_id),
+                FOREIGN KEY (meeting_id) REFERENCES meetings (id) ON DELETE CASCADE
+            )
+        ''')
+        
         db.commit()
         db.close()
         logger.info("資料庫已初始化。")
@@ -181,11 +192,15 @@ def get_meeting_summary(meeting_id):
                 logger.warning(f"無法解析會議 {meeting_id} 的發言人重點 JSON")
                 speaker_highlights = []
         
+        # 將 datetime 物件轉換為 ISO 格式的字串
+        summary_time = result['summary_generated_at']
+        summary_generated_at_iso = summary_time.isoformat() if isinstance(summary_time, datetime) else summary_time
+
         return {
             'global_summary': result['global_summary'],
             'chunk_summaries': result['chunk_summaries'],
             'speaker_highlights': speaker_highlights,
-            'summary_generated_at': result['summary_generated_at']
+            'summary_generated_at': summary_generated_at_iso
         }
     
     return None
@@ -196,3 +211,25 @@ def init_app(app):
     """
     # 註冊 teardown 函式，在每個請求結束後自動關閉資料庫連線
     app.teardown_appcontext(close_db)
+
+def get_speaker_names(meeting_id):
+    """獲取會議的發言者名稱映射"""
+    sql = 'SELECT original_speaker_id, custom_name FROM speaker_names WHERE meeting_id = ?'
+    cursor = get_db().execute(sql, (meeting_id,))
+    result = cursor.fetchall()
+    return {row['original_speaker_id']: row['custom_name'] for row in result}
+
+def update_speaker_name(meeting_id, original_speaker_id, custom_name):
+    """更新或新增發言者名稱"""
+    conn = get_db()
+    sql = '''INSERT OR REPLACE INTO speaker_names (meeting_id, original_speaker_id, custom_name)
+             VALUES (?, ?, ?)'''
+    conn.execute(sql, (meeting_id, original_speaker_id, custom_name))
+    conn.commit()
+
+def delete_speaker_name(meeting_id, original_speaker_id):
+    """刪除發言者名稱映射，恢復原始名稱"""
+    conn = get_db()
+    sql = 'DELETE FROM speaker_names WHERE meeting_id = ? AND original_speaker_id = ?'
+    conn.execute(sql, (meeting_id, original_speaker_id))
+    conn.commit()

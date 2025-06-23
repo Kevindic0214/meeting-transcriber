@@ -1,6 +1,7 @@
 import io
+
 from docx import Document
-from docx.shared import Inches
+
 
 def format_summary_for_export(summary_data: dict, meeting_info) -> str:
     """

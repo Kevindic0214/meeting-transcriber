@@ -13,7 +13,7 @@ def parse_srt_content(srt_content, speaker_name_mapping=None):
     
     Args:
         srt_content (str): SRT 格式的字幕內容
-        speaker_name_mapping (dict): 發言者名稱映射，例如 {"發言者00": "張三", "發言者01": "李四"}
+        speaker_name_mapping (dict): 發言者名稱映射，例如 {"發言者00": "Kevin", "發言者01": "Elvis"}
     """
     if speaker_name_mapping is None:
         speaker_name_mapping = {}
@@ -180,3 +180,48 @@ def format_time(seconds):
     if hours > 0:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
     return f"{minutes:02d}:{secs:02d}"
+
+
+def apply_speaker_names_to_srt(srt_content, speaker_name_mapping=None):
+    """
+    將發言者名稱映射應用到SRT內容中
+    
+    Args:
+        srt_content (str): 原始SRT內容
+        speaker_name_mapping (dict): 發言者名稱映射，例如 {"發言者00": "Kevin", "發言者01": "Elvis"}
+    
+    Returns:
+        str: 應用發言者名稱映射後的SRT內容
+    """
+    if not speaker_name_mapping:
+        return srt_content
+    
+    try:
+        # 使用 srt 函式庫解析內容
+        subtitles = list(srt.parse(srt_content))
+        
+        for subtitle in subtitles:
+            # 提取原始發言者資訊
+            original_speaker = extract_speaker_from_content(subtitle.content)
+            
+            # 如果有對應的自定義名稱，則替換
+            if original_speaker in speaker_name_mapping:
+                custom_name = speaker_name_mapping[original_speaker]
+                
+                # 替換發言者標籤
+                # 處理各種可能的格式
+                patterns_to_replace = [
+                    (rf'\[{re.escape(original_speaker)}\]:', f'[{custom_name}]:'),
+                    (rf'\[{re.escape(original_speaker)}\]\s+', f'[{custom_name}] '),
+                    (rf'{re.escape(original_speaker)}:', f'{custom_name}:'),
+                ]
+                
+                for pattern, replacement in patterns_to_replace:
+                    subtitle.content = re.sub(pattern, replacement, subtitle.content)
+        
+        # 重新組合成SRT格式
+        return srt.compose(subtitles)
+    
+    except Exception as e:
+        logger.error(f"應用發言者名稱映射時發生錯誤: {e}")
+        return srt_content  # 如果出錯，返回原始內容

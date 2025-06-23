@@ -19,7 +19,7 @@ from flask import (
 import time
 from datetime import datetime
 
-from app.db import add_meeting, get_all_meetings, get_meeting_by_id, get_meeting_summary
+from app.db import add_meeting, get_all_meetings, get_meeting_by_id, get_meeting_summary, get_speaker_names, update_speaker_name, delete_speaker_name
 from app.services.processing import process_meeting
 from utils.export_utils import format_summary_for_export, create_summary_docx
 from . import bp
@@ -136,12 +136,15 @@ def download_summary(meeting_id, file_type):
     if not meeting or not summary_data:
         flash('找不到會議摘要', 'error')
         return redirect(url_for('main.meeting_detail', meeting_id=meeting_id))
+    
+    # 獲取發言者名稱映射
+    speaker_names = get_speaker_names(meeting_id)
         
     original_name = Path(meeting['original_filename']).stem
     
     if file_type == 'txt':
         # 生成 TXT 內容
-        content = format_summary_for_export(summary_data, meeting)
+        content = format_summary_for_export(summary_data, meeting, speaker_names)
         
         # 準備下載
         return Response(
@@ -154,7 +157,7 @@ def download_summary(meeting_id, file_type):
     
     elif file_type == 'docx':
         # 生成 Word 文件
-        docx_file = create_summary_docx(summary_data, meeting)
+        docx_file = create_summary_docx(summary_data, meeting, speaker_names)
         
         # 準備下載
         return send_file(
@@ -167,6 +170,9 @@ def download_summary(meeting_id, file_type):
 @bp.route('/download/<meeting_id>/<file_type>')
 def download_file_route(meeting_id, file_type):
     """下載處理結果檔案"""
+    from utils.subtitle_processing import apply_speaker_names_to_srt
+    from io import BytesIO
+    
     field_map = {
         'srt': 'srt_path',
         'rttm': 'rttm_path', 
@@ -195,6 +201,32 @@ def download_file_route(meeting_id, file_type):
     }
     download_name = f"{original_name}{extension_map[file_type]}"
     
+    # 對於SRT檔案，檢查是否需要應用發言者名稱映射
+    if file_type in ['srt', 'speaker_srt']:
+        # 獲取發言者名稱映射
+        speaker_names = get_speaker_names(meeting_id)
+        
+        if speaker_names:
+            # 讀取原始檔案內容
+            with open(file_path, 'r', encoding='utf-8') as f:
+                original_content = f.read()
+            
+            # 應用發言者名稱映射
+            modified_content = apply_speaker_names_to_srt(original_content, speaker_names)
+            
+            # 創建記憶體中的檔案物件
+            modified_file = BytesIO(modified_content.encode('utf-8'))
+            modified_file.seek(0)
+            
+            # 返回修改後的檔案
+            return send_file(
+                modified_file,
+                as_attachment=True,
+                download_name=download_name,
+                mimetype='text/srt; charset=utf-8'
+            )
+    
+    # 對於RTTM檔案或沒有發言者名稱映射的情況，直接返回原始檔案
     return send_file(file_path, as_attachment=True, download_name=download_name)
 
 # ===============================================

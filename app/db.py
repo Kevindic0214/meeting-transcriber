@@ -1,5 +1,5 @@
-import sqlite3
 import logging
+import sqlite3
 from datetime import datetime
 
 from flask import current_app, g

@@ -154,6 +154,75 @@ def _generate_speaker_highlights(transcription: str) -> list[str]:
             
     return speaker_highlights
 
+def create_summary_prompt(transcription: str, speaker_names: dict, supplementary_summary: str = None) -> str:
+    """
+    創建一個用於生成會議摘要的完整提示。
+
+    Args:
+        transcription (str): 會議逐字稿。
+        speaker_names (dict): 發言者 ID 和名稱的對應字典。
+        supplementary_summary (str, optional): 輔助文件的摘要。
+
+    Returns:
+        str: 完整的提示內容。
+    """
+    prompt = f"""
+請根據以下會議逐字稿和相關資訊，生成一份詳細的會議記錄。
+
+**會議逐字稿:**
+---
+{transcription}
+---
+
+**發言者列表:**
+{', '.join(speaker_names.values()) if speaker_names else '未知'}
+
+"""
+    if supplementary_summary:
+        prompt += f"""
+**輔助文件摘要:**
+---
+{supplementary_summary}
+---
+"""
+    prompt += """
+**輸出要求:**
+請以 JSON 格式輸出，包含以下三個鍵：
+1.  `"summary"`: (字串) 一段約 200-300 字的會議摘要，總結會議的背景、討論的關鍵點、以及最終的結論或共識。
+2.  `"action_items"`: (字串陣列) 列出會議中明確提到的待辦事項，每一項都應清楚說明負責人（如果有的話）和任務內容。如果沒有，請返回一個空陣列 `[]`。
+3.  `"speaker_highlights"`: (物件陣列) 針對每一位發言者，整理其最重要的 1-3 個發言重點。每個物件應包含 `"speaker"` (發言者名稱) 和 `"highlights"` (字串陣列) 兩個鍵。
+
+請確保 JSON 格式正確無誤。
+"""
+    return prompt
+
+def parse_summary_from_json(json_string: str) -> dict:
+    """
+    從 OpenAI 回傳的 JSON 字串中解析出摘要資訊。
+
+    Args:
+        json_string (str): OpenAI 回傳的 JSON 格式字串。
+
+    Returns:
+        dict: 包含 'summary' 和 'speaker_highlights' 的字典。
+    """
+    import json
+    try:
+        data = json.loads(json_string)
+        # 為了相容舊的 save_meeting_summary 函式，我們主要提取這兩部分
+        return {
+            "summary": data.get("summary", ""),
+            "action_items": data.get("action_items", []),
+            "speaker_highlights": data.get("speaker_highlights", [])
+        }
+    except json.JSONDecodeError:
+        # 如果解析失敗，返回一個預設結構，並將原始字串放在 summary 中
+        return {
+            "summary": "無法解析 AI 回應，原始內容如下：\n" + json_string,
+            "action_items": [],
+            "speaker_highlights": []
+        }
+
 def process_transcription(transcription: str, chunk_size: int = 15) -> tuple[str, str, list[str]]:
     """
     處理會議逐字稿，生成全局摘要和發言人重點。

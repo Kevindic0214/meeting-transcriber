@@ -10,7 +10,7 @@ from app.db import update_meeting_status
 
 logger = logging.getLogger(__name__)
 
-def process_meeting(app, meeting_id, file_path_str, num_speakers=None):
+def process_meeting(app, meeting_id, file_path_str, num_speakers=None, supplementary_file_path=None):
     """
     處理會議音訊的主要函式。
     此函式在獨立的執行緒中運行，需要傳入 app context。

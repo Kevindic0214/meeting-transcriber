@@ -10,8 +10,11 @@ import os
 from . import bp
 from app.db import (get_meeting_by_id, delete_meeting_by_id, get_meeting_summary, 
                     save_meeting_summary, get_speaker_names, get_all_meetings, 
-                    add_meeting, update_speaker_name, delete_speaker_name)
+                    add_meeting, update_speaker_name, delete_speaker_name,
+                    update_supplementary_summary)
 from utils.subtitle_processing import parse_srt_content
+from utils.document_parser import read_document_text
+from utils.transcription_processor import create_summary_prompt, parse_summary_from_json
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +153,68 @@ def delete_meeting(meeting_id):
         return jsonify({'status': 'success', 'message': '會議記錄已成功刪除'})
     except Exception as e:
         logger.error(f"刪除會議時發生未知錯誤 (ID: {meeting_id}): {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': '伺服器內部錯誤'}), 500
+
+# ===============================================
+# 輔助文件處理 API
+# ===============================================
+
+@bp.route('/meeting/<meeting_id>/process-supplement', methods=['POST'])
+def process_supplementary_file(meeting_id):
+    """API: 處理輔助文件，產生摘要並儲存"""
+    meeting = get_meeting_by_id(meeting_id)
+    if not meeting:
+        return jsonify({'status': 'error', 'message': '找不到會議記錄'}), 404
+
+    if not meeting['supplementary_file_path']:
+        return jsonify({'status': 'error', 'message': '此會議沒有輔助文件'}), 400
+
+    file_path = meeting['supplementary_file_path']
+    if not Path(file_path).exists():
+        return jsonify({'status': 'error', 'message': '輔助文件檔案遺失'}), 404
+
+    try:
+        # 1. 讀取文件內容
+        document_text = read_document_text(file_path)
+        if not document_text:
+            return jsonify({'status': 'success', 'message': '文件內容為空，無需處理'})
+
+        # 2. 呼叫 OpenAI 產生摘要
+        client = current_app.audio_processor.openai_client
+        prompt = f"""
+        你是一個專業的會議助理。請閱讀以下文件內容，並為其產生一份簡潔的摘要，提煉出最重要的核心重點。
+        摘要應包含：
+        1.  文件的主要目的或主題。
+        2.  關鍵的論點、數據或發現。
+        3.  任何重要的結論或建議。
+
+        摘要內容請以條列式呈現，力求精簡扼要，總長度不要超過 300 字。
+
+        文件內容如下：
+        ---
+        {document_text[:8000]}
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "你是一個專業的會議助理。"},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+        )
+        summary = response.choices[0].message.content
+
+        # 3. 儲存摘要到資料庫
+        update_supplementary_summary(meeting_id, summary)
+
+        return jsonify({'status': 'success', 'summary': summary})
+
+    except ValueError as e:
+        logger.warning(f"處理輔助文件失敗 (會議 ID: {meeting_id}): {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    except Exception as e:
+        logger.error(f"處理輔助文件時發生未知錯誤 (會議 ID: {meeting_id}): {e}", exc_info=True)
         return jsonify({'status': 'error', 'message': '伺服器內部錯誤'}), 500
 
 # ===============================================
@@ -292,98 +357,88 @@ def _parse_srt_to_transcription(srt_content):
 @bp.route('/meeting/<meeting_id>/summary', methods=['GET'])
 def get_meeting_summary_api(meeting_id):
     """API: 獲取會議摘要"""
-    try:
-        meeting = get_meeting_by_id(meeting_id)
-        if not meeting:
-            return jsonify({'status': 'error', 'message': '找不到指定的會議記錄'}), 404
-        
-        # 獲取儲存的摘要
-        summary_data = get_meeting_summary(meeting_id)
-        if summary_data:
-            return jsonify({
-                'status': 'success',
-                'data': summary_data,
-                'has_summary': True
-            })
-        else:
-            return jsonify({
-                'status': 'success',
-                'data': None,
-                'has_summary': False,
-                'message': '尚未生成摘要'
-            })
-            
-    except Exception as e:
-        logger.error(f"獲取會議摘要時發生錯誤: {e}", exc_info=True)
-        return jsonify({'status': 'error', 'message': '獲取摘要時發生錯誤'}), 500
+    summary = get_meeting_summary(meeting_id)
+    if summary:
+        # 檢查 from_cache 參數
+        from_cache = request.args.get('from_cache', 'true').lower() == 'true'
+        return jsonify({
+            'status': 'success',
+            'data': summary,
+            'from_cache': from_cache
+        })
+    else:
+        return jsonify({
+            'status': 'not_found',
+            'message': '此會議的摘要不存在或尚未生成'
+        }), 404
 
 @bp.route('/meeting/<meeting_id>/generate-summary', methods=['POST'])
 def generate_meeting_summary(meeting_id):
-    """API: 生成會議摘要"""
+    """API: 為會議生成或重新生成 AI 摘要"""
+    meeting = get_meeting_by_id(meeting_id)
+    if not meeting:
+        return jsonify({'status': 'error', 'message': '找不到會議記錄'}), 404
+        
+    if meeting['status'] != 'completed':
+        return jsonify({'status': 'error', 'message': '會議尚未處理完成'}), 400
+
+    # 獲取逐字稿
     try:
-        from utils.transcription_processor import process_transcription
-        
-        meeting = get_meeting_by_id(meeting_id)
-        if not meeting:
-            return jsonify({'status': 'error', 'message': '找不到指定的會議記錄'}), 404
-        
-        if meeting['status'] != 'completed':
-            return jsonify({'status': 'error', 'message': '會議尚未處理完成'}), 400
-        
-        # 檢查是否要強制重新生成
-        request_data = request.get_json() or {}
-        force_regenerate = request_data.get('force_regenerate', False)
-        
-        # 檢查是否已有儲存的摘要（除非強制重新生成）
-        if not force_regenerate:
-            existing_summary = get_meeting_summary(meeting_id)
-            if existing_summary:
-                logger.info(f"會議 {meeting_id} 已有儲存的摘要，直接返回")
-                return jsonify({
-                    'status': 'success',
-                    'data': existing_summary,
-                    'from_cache': True
-                })
-        
-        # 讀取語者標註字幕檔案
-        if not meeting['speaker_srt_path']:
-            return jsonify({'status': 'error', 'message': '找不到會議逐字稿'}), 404
-            
-        srt_file_path = current_app.config['BASE_DIR'] / meeting['speaker_srt_path']
-        if not srt_file_path.exists():
-            return jsonify({'status': 'error', 'message': '逐字稿檔案不存在'}), 404
-        
-        # 讀取 SRT 檔案並轉換為純文字格式
-        with open(srt_file_path, 'r', encoding='utf-8') as f:
+        with (current_app.config['BASE_DIR'] / meeting['speaker_srt_path']).open('r', encoding='utf-8') as f:
             srt_content = f.read()
-        
-        # 解析 SRT 格式，提取發言內容
         transcription_text = _parse_srt_to_transcription(srt_content)
+        if not transcription_text:
+            raise FileNotFoundError("無法從 SRT 檔案中提取逐字稿內容。")
+    except (FileNotFoundError, TypeError) as e:
+        logger.error(f"無法讀取或解析會議 {meeting_id} 的逐字稿: {e}")
+        return jsonify({'status': 'error', 'message': '找不到或無法解析逐字稿內容'}), 404
+
+    try:
+        # 獲取發言者名稱映射和輔助文件摘要
+        speaker_names = get_speaker_names(meeting_id)
+        supplementary_summary = meeting.get('supplementary_summary')
+
+        # 準備發送給 OpenAI 的提示
+        prompt = create_summary_prompt(
+            transcription_text,
+            speaker_names,
+            supplementary_summary
+        )
         
-        if not transcription_text.strip():
-            return jsonify({'status': 'error', 'message': '無法解析逐字稿內容'}), 400
+        # 呼叫 OpenAI API
+        client = current_app.audio_processor.openai_client
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "你是一個專業的會議記錄員，擅長從逐字稿中提取摘要、行動項目和關鍵重點。"},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.5
+        )
         
-        # 使用 AI 處理逐字稿
-        logger.info(f"開始為會議 {meeting_id} 生成 AI 摘要")
-        global_summary, chunk_summaries, speaker_highlights = process_transcription(transcription_text)
+        summary_json = response.choices[0].message.content
+        parsed_summary = parse_summary_from_json(summary_json)
         
-        # 將結果儲存到資料庫
-        save_meeting_summary(meeting_id, global_summary, chunk_summaries, speaker_highlights)
-        logger.info(f"會議 {meeting_id} 的 AI 摘要已儲存到資料庫")
+        # 處理 action_items
+        action_items_str = "\n".join(f"- {item}" for item in parsed_summary.get("action_items", []))
+        final_summary = parsed_summary.get('summary', '')
+        if action_items_str:
+            final_summary += "\n\n**行動項目:**\n" + action_items_str
+
+        save_meeting_summary(
+            meeting_id,
+            global_summary=final_summary,
+            chunk_summaries=None,
+            speaker_highlights=parsed_summary.get('speaker_highlights')
+        )
         
-        return jsonify({
-            'status': 'success',
-            'data': {
-                'global_summary': global_summary,
-                'chunk_summaries': chunk_summaries,
-                'speaker_highlights': speaker_highlights
-            },
-            'from_cache': False
-        })
-        
+        new_summary = get_meeting_summary(meeting_id)
+        return jsonify({'status': 'success', 'summary': new_summary})
+
     except Exception as e:
-        logger.error(f"生成會議摘要時發生錯誤: {e}", exc_info=True)
-        return jsonify({'status': 'error', 'message': '生成摘要時發生錯誤，請稍後再試'}), 500
+        logger.error(f"生成摘要時發生錯誤 (會議 ID: {meeting_id}): {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': f'生成摘要失敗: {str(e)}'}), 500
 
 # ===============================================
 # 發言者管理 API

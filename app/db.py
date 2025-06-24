@@ -82,7 +82,9 @@ def init_db():
                 global_summary TEXT,
                 chunk_summaries TEXT,
                 speaker_highlights TEXT,
-                summary_generated_at TIMESTAMP
+                summary_generated_at TIMESTAMP,
+                supplementary_file_path TEXT,
+                supplementary_summary TEXT
             )
         ''')
         
@@ -103,11 +105,11 @@ def init_db():
     except Exception as e:
         logger.error(f"無法初始化資料庫: {e}")
 
-def add_meeting(meeting_id, filename, original_filename):
+def add_meeting(meeting_id, filename, original_filename, supplementary_file_path=None):
     """新增一筆新的會議記錄到資料庫。"""
-    sql = 'INSERT INTO meetings (id, filename, original_filename, status) VALUES (?, ?, ?, ?)'
+    sql = 'INSERT INTO meetings (id, filename, original_filename, status, supplementary_file_path) VALUES (?, ?, ?, ?, ?)'
     conn = get_db()
-    conn.execute(sql, (meeting_id, filename, original_filename, 'uploaded'))
+    conn.execute(sql, (meeting_id, filename, original_filename, 'uploaded', supplementary_file_path))
     conn.commit()
 
 def get_meeting_by_id(meeting_id):
@@ -232,4 +234,11 @@ def delete_speaker_name(meeting_id, original_speaker_id):
     conn = get_db()
     sql = 'DELETE FROM speaker_names WHERE meeting_id = ? AND original_speaker_id = ?'
     conn.execute(sql, (meeting_id, original_speaker_id))
+    conn.commit()
+
+def update_supplementary_summary(meeting_id, summary):
+    """更新會議的輔助文件摘要。"""
+    sql = 'UPDATE meetings SET supplementary_summary = ? WHERE id = ?'
+    conn = get_db()
+    conn.execute(sql, (summary, meeting_id))
     conn.commit()

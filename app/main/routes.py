@@ -53,6 +53,25 @@ def upload_file():
     
     config = current_app.config
     meeting_id = str(uuid.uuid4())
+
+    # 處理輔助文件
+    supplementary_file = request.files.get('supplementary_file')
+    supplementary_file_path = None
+    if supplementary_file and supplementary_file.filename != '':
+        supp_allowed_extensions = {'.pdf', '.docx', '.pptx'}
+        supp_file_ext = Path(supplementary_file.filename).suffix.lower()
+        if supp_file_ext not in supp_allowed_extensions:
+            return jsonify({'status': 'error', 'message': '不支援的輔助文件格式'}), 400
+        
+        # 儲存輔助文件
+        supp_filename = secure_filename(f"{meeting_id}_supp_{supplementary_file.filename}")
+        supplementary_file_path = str(config['UPLOADS_FOLDER'] / supp_filename)
+        try:
+            supplementary_file.save(supplementary_file_path)
+        except Exception as e:
+            logger.error(f"儲存輔助文件失敗: {e}", exc_info=True)
+            return jsonify({'status': 'error', 'message': '儲存輔助文件時發生錯誤'}), 500
+
     filename = secure_filename(f"{meeting_id}_{file.filename}")
     file_path = config['UPLOADS_FOLDER'] / filename
     
@@ -62,11 +81,15 @@ def upload_file():
         file_length = file.tell()
         file.seek(0, 0)
         if file_length > config['MAX_CONTENT_LENGTH']:
+            if supplementary_file_path and Path(supplementary_file_path).exists():
+                Path(supplementary_file_path).unlink()
             return jsonify({'status': 'error', 'message': f'檔案大小超過 {config["MAX_CONTENT_LENGTH"] // 1024 // 1024}MB 的限制'}), 413
             
         file.save(file_path)
     except Exception as e:
         logger.error(f"儲存檔案失敗: {e}", exc_info=True)
+        if supplementary_file_path and Path(supplementary_file_path).exists():
+            Path(supplementary_file_path).unlink()
         return jsonify({'status': 'error', 'message': '儲存檔案時發生錯誤'}), 500
 
     num_speakers = request.form.get('num_speakers')
@@ -75,11 +98,11 @@ def upload_file():
     else:
         num_speakers = None
     
-    add_meeting(meeting_id, filename, file.filename)
+    add_meeting(meeting_id, filename, file.filename, supplementary_file_path)
     
     app = current_app._get_current_object()
     
-    thread = Thread(target=process_meeting, args=(app, meeting_id, str(file_path), num_speakers))
+    thread = Thread(target=process_meeting, args=(app, meeting_id, str(file_path), num_speakers, supplementary_file_path))
     thread.daemon = True
     thread.start()
     

@@ -715,47 +715,6 @@
 }
 
 /* ==========================================================================
-   響應式設計增強
-   ========================================================================== */
-
-@media (max-width: 768px) {
-    .upload-area {
-        padding: 2rem 1rem;
-    }
-    
-    .upload-area .fa-cloud-upload,
-    .upload-area .fa-cloud-upload-alt {
-        font-size: 3rem;
-    }
-    
-    .x_content {
-        padding: 1rem;
-    }
-    
-    .meeting-card {
-        padding: 1.5rem;
-    }
-    
-    .btn {
-        width: 100%;
-        justify-content: center;
-        margin: 0.25rem 0;
-    }
-    
-    .processing-steps .step {
-        padding-left: 2rem;
-    }
-    
-    .processing-steps::before {
-        left: 0.75rem;
-    }
-    
-    .processing-steps .step::before {
-        left: 0;
-    }
-}
-
-/* ==========================================================================
    動畫和載入效果
    ========================================================================== */
 
@@ -1015,41 +974,6 @@
     line-height: 1.6;
 }
 
-/* 響應式設計 */
-@media (max-width: 768px) {
-    .quick-actions-sidebar {
-        width: 100%;
-        right: -100%;
-    }
-    
-    .quick-actions-trigger {
-        right: 15px;
-    }
-    
-    .quick-actions-trigger button {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.875rem;
-    }
-    
-    .sidebar-header {
-        padding: 1rem;
-    }
-    
-    .sidebar-content {
-        padding: 1rem;
-    }
-    
-    .quick-action-item {
-        padding: 0.75rem;
-    }
-    
-    .action-icon {
-        width: 2.5rem;
-        height: 2.5rem;
-        font-size: 1rem;
-    }
-}
-
 /* ==========================================================================
    最近會議記錄樣式 - Recent Meetings Styles
    ========================================================================== */
@@ -1291,41 +1215,4 @@
 .recent-meetings-error p {
     color: var(--text-secondary);
     margin-bottom: 1rem;
-}
-
-/* 響應式設計 */
-@media (max-width: 768px) {
-    .meeting-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-    
-    .meeting-title {
-        width: 100%;
-    }
-    
-    .filename {
-        max-width: 100%;
-    }
-    
-    .meeting-meta {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.75rem;
-    }
-    
-    .meeting-actions {
-        text-align: left;
-        width: 100%;
-    }
-    
-    .meeting-actions .btn {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .recent-meetings-list {
-        padding-right: 0;
-    }
 }
